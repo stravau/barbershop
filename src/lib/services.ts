@@ -20,29 +20,28 @@ export const SERVICES: readonly ServiceItem[] = [
   {
     id: "corte",
     name: "Corte",
-    description: "Corte completo à máquina e tesoura, finalizado com alinhamento.",
+    description: "Máquina e tesoura, acabado com alinhamento.",
     priceEur: 10,
     durationMin: 45,
   },
   {
     id: "barba",
     name: "Barba",
-    description: "Aparar, desenhar e finalizar com precisão.",
+    description: "Aparar e desenhar a barba.",
     priceEur: 5,
     durationMin: 30,
   },
   {
     id: "sobrancelha",
     name: "Sobrancelha",
-    description: "Limpeza e definição da sobrancelha masculina.",
+    description: "Limpeza e definição.",
     priceEur: 5,
     durationMin: 15,
   },
   {
     id: "alinhamento",
     name: "Alinhamento",
-    description:
-      "Apenas contornos e acabamentos. Não é compatível com Corte (já incluído).",
+    description: "Só contornos e acabamentos. Já vem incluído no corte.",
     priceEur: 5,
     durationMin: 20,
   },
@@ -138,30 +137,49 @@ export function formatPrice(priceEur: number): string {
   return priceEur.toFixed(2).replace(".", ",") + " €"
 }
 
+/** Like formatPrice but drops zero cents ("10 €", "12,50 €") — for price boards. */
+export function formatPriceShort(priceEur: number): string {
+  return Number.isInteger(priceEur) ? `${priceEur} €` : formatPrice(priceEur)
+}
+
+/** Sum of the individual (non-combo) prices of the given items. */
+export function listPrice(itemIds: readonly string[]): number {
+  return itemIds.reduce((sum, id) => sum + (getServiceItem(id)?.priceEur ?? 0), 0)
+}
+
+/** Combos with a special price (the ones worth advertising), in menu order. */
+export function discountedCombos(): Combo[] {
+  const rank = (c: Combo) => c.itemIds.map((id) => DISPLAY_ORDER.indexOf(id)).join(",")
+  return Object.keys(COMBO_OVERRIDES)
+    .map((key) => buildCombo(key.split("+")))
+    .sort((a, b) => a.itemIds.length - b.itemIds.length || rank(a).localeCompare(rank(b)))
+}
+
 /**
- * Marginal cost of adding `candidateId` to the current selection.
+ * What `candidateId` costs as part of the selection (added to it if it isn't
+ * selected yet). Used by the services UI to show discounted add-on prices,
+ * e.g. "Barba 5 €" shows as "2,50 €" whenever "Corte" is also picked.
  *
- * Used by the services UI to show a discounted addon price (e.g., "Barba 5€"
- * becomes "2,50€" after the customer picks "Corte"). Returns the listed
- * price unchanged when the candidate is already selected, when adding it
- * would create an invalid combo, or when the resulting combo has no discount.
+ * Combo discounts are attributed to add-ons: items are priced in menu order,
+ * so Corte always keeps its full price and the prices shown for a selection
+ * add up to the combo price. Returns the listed price when the selection
+ * would be invalid (e.g. Corte + Alinhamento).
  */
-export function marginalPrice(
-  currentIds: readonly ServiceId[],
+export function priceInSelection(
+  selectedIds: readonly ServiceId[],
   candidateId: ServiceId,
 ): number {
   const candidate = getServiceItem(candidateId)
   if (!candidate) return 0
 
-  const current = [...currentIds].filter((id) => id !== candidateId)
-  if (current.length === 0) return candidate.priceEur
+  const all = sortDisplay([...new Set([...selectedIds, candidateId])])
+  if (!validateSelection(all).ok) return candidate.priceEur
 
-  const next = [...current, candidateId]
-  if (!validateSelection(next).ok) return candidate.priceEur
-
-  const currentCombo = buildCombo(current)
-  const nextCombo = buildCombo(next)
-  return nextCombo.priceEur - currentCombo.priceEur
+  const idx = all.indexOf(candidateId)
+  const before = all.slice(0, idx)
+  const upToCandidate = all.slice(0, idx + 1)
+  const beforePrice = before.length > 0 ? buildCombo(before).priceEur : 0
+  return buildCombo(upToCandidate).priceEur - beforePrice
 }
 
 /** Parse comma-separated services from a query param, e.g. "corte,barba" */

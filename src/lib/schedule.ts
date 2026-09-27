@@ -1,9 +1,10 @@
 export type LocationId = "lisboa" | "setubal"
 
+// Street addresses deliberately don't live here — this module ships to the
+// browser. See lib/addresses.ts.
 export interface Location {
   id: LocationId
   name: string
-  address?: string
 }
 
 export const LOCATIONS: readonly Location[] = [
@@ -65,25 +66,80 @@ export function isLocationOpenOn(
   return SCHEDULE[location][dayOfWeek] != null
 }
 
-/**
- * Given a `yyyymmdd` date and location, returns the YYYY-MM-DD of the next day
- * (strictly after) when the location is open. Searches up to 14 days ahead;
- * returns null if nothing found in that window.
- */
-export function getNextOpenDate(
-  location: LocationId,
-  yyyymmdd: string,
-): string | null {
-  const [y, m, d] = yyyymmdd.split("-").map(Number)
-  for (let i = 1; i <= 14; i++) {
-    const probe = new Date(Date.UTC(y, m - 1, d + i))
-    const dow = probe.getUTCDay() as DayOfWeek
-    if (isLocationOpenOn(location, dow)) {
-      const yy = probe.getUTCFullYear()
-      const mm = String(probe.getUTCMonth() + 1).padStart(2, "0")
-      const dd = String(probe.getUTCDate()).padStart(2, "0")
-      return `${yy}-${mm}-${dd}`
+// ---------- display helpers ----------
+
+/** Monday-first week, the way it's read in Portugal. */
+const WEEK: readonly DayOfWeek[] = [1, 2, 3, 4, 5, 6, 0]
+export const DAY_SHORT: Record<DayOfWeek, string> = {
+  0: "Dom", 1: "Seg", 2: "Ter", 3: "Qua", 4: "Qui", 5: "Sex", 6: "Sáb",
+}
+
+/** "12:00" -> "12h", "12:30" -> "12h30" */
+export function formatHour(hhmm: string): string {
+  const [h, m] = hhmm.split(":")
+  return m === "00" ? `${Number(h)}h` : `${Number(h)}h${m}`
+}
+
+export interface WeekDayHours {
+  dow: DayOfWeek
+  day: string
+  /** e.g. "12h–20h", or null when closed */
+  hours: string | null
+}
+
+/** Opening hours for a location, Monday → Sunday (closed days included). */
+export function weeklyHours(location: LocationId): WeekDayHours[] {
+  return WEEK.map((dow) => {
+    const wh = getWorkingHours(location, dow)
+    return {
+      dow,
+      day: DAY_SHORT[dow],
+      // word joiners keep "15h–20h" from wrapping at the dash
+      hours: wh ? `${formatHour(wh.start)}⁠–⁠${formatHour(wh.end)}` : null,
     }
+  })
+}
+
+/** Open days as short text: "Seg–Sex", "Sex e Sáb", "Seg, Qua e Sex". */
+export function openDaysSummary(location: LocationId): string {
+  const idx = WEEK.flatMap((dow, i) => (isLocationOpenOn(location, dow) ? [i] : []))
+  if (idx.length === 0) return ""
+  const names = idx.map((i) => DAY_SHORT[WEEK[i]])
+  const consecutive = idx.every((v, i) => i === 0 || v === idx[i - 1] + 1)
+  if (consecutive && idx.length > 2) return `${names[0]}–${names[names.length - 1]}`
+  if (names.length === 1) return names[0]
+  return `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`
+}
+
+/** Calendar arithmetic on YYYY-MM-DD strings: ymdPlusDays("2026-09-30", 1) -> "2026-10-01" */
+export function ymdPlusDays(yyyymmdd: string, days: number): string {
+  const [y, m, d] = yyyymmdd.split("-").map(Number)
+  const probe = new Date(Date.UTC(y, m - 1, d + days))
+  const yy = probe.getUTCFullYear()
+  const mm = String(probe.getUTCMonth() + 1).padStart(2, "0")
+  const dd = String(probe.getUTCDate()).padStart(2, "0")
+  return `${yy}-${mm}-${dd}`
+}
+
+/** Day of week of a YYYY-MM-DD calendar date (0 = Sunday). */
+export function ymdDayOfWeek(yyyymmdd: string): DayOfWeek {
+  const [y, m, d] = yyyymmdd.split("-").map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() as DayOfWeek
+}
+
+/**
+ * The YYYY-MM-DD dates on which the location is open, from `fromYmd`
+ * (inclusive) through `days` days later.
+ */
+export function upcomingOpenDates(
+  location: LocationId,
+  fromYmd: string,
+  days: number,
+): string[] {
+  const out: string[] = []
+  for (let i = 0; i <= days; i++) {
+    const ymd = ymdPlusDays(fromYmd, i)
+    if (isLocationOpenOn(location, ymdDayOfWeek(ymd))) out.push(ymd)
   }
-  return null
+  return out
 }

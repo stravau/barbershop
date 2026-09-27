@@ -1,24 +1,38 @@
 import type { Metadata } from "next"
-import { Cinzel, Inter } from "next/font/google"
+import { Alfa_Slab_One, Archivo, Yellowtail } from "next/font/google"
 import "./globals.css"
 import { SiteHeader } from "@/components/SiteHeader"
 import { SiteFooter } from "@/components/SiteFooter"
+import { getServiceItem, formatPriceShort } from "@/lib/services"
+import { getSiteUrl } from "@/lib/site"
 
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
+const slab = Alfa_Slab_One({
+  variable: "--font-slab",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: "400",
 })
 
-const inter = Inter({
-  variable: "--font-inter",
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  axes: ["wdth"],
 })
+
+const yellowtail = Yellowtail({
+  variable: "--font-yellowtail",
+  subsets: ["latin"],
+  weight: "400",
+})
+
+const cutPrice = formatPriceShort(getServiceItem("corte")?.priceEur ?? 0)
 
 export const metadata: Metadata = {
-  title: "Tarzan's Barbershop — Marcações em Lisboa e Setúbal",
-  description:
-    "Barbearia clássica em Lisboa e Setúbal. Cortes precisos, atendimento meticuloso e agenda online com confirmação imediata.",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: "Tarzan's Barbershop — Barbeiro em Setúbal e Lisboa",
+    template: "%s · Tarzan's Barbershop",
+  },
+  description: `Barbeiro em Setúbal e Lisboa. Corte a ${cutPrice}, barba, sobrancelha e combos — marca online em menos de um minuto.`,
 }
 
 export default function RootLayout({
@@ -27,13 +41,11 @@ export default function RootLayout({
   return (
     <html
       lang="pt-PT"
-      className={`${cinzel.variable} ${inter.variable} h-full antialiased`}
+      className={`${slab.variable} ${archivo.variable} ${yellowtail.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="min-h-full flex flex-col">
         <SiteHeader />
-        {/* min-h-[100vh] forces page content to fill viewport so the policies/footer
-            section requires a deliberate scroll, even on tall monitors */}
-        <div className="flex-1 min-h-[100vh]">{children}</div>
+        <div className="flex-1">{children}</div>
         <SiteFooter />
       </body>
     </html>

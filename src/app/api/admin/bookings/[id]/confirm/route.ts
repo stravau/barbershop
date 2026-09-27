@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { sendEmail, clientConfirmedEmail, getSiteUrl } from "@/lib/email"
 import { updateEvent } from "@/lib/gcal"
+import { getLocationAddress } from "@/lib/addresses"
 
 /**
  * GET /api/admin/bookings/[id]/confirm?token=...
@@ -91,6 +92,7 @@ export async function GET(
         durationMin: updated.durationMin,
         priceEur: updated.servicePrice,
         location: updated.location === "lisboa" ? "Lisboa" : "Setúbal",
+        address: getLocationAddress(updated.location),
         whenLocal: formatLisbon(
           updated.startUtc,
           "EEEE, dd 'de' MMMM 'às' HH:mm",

@@ -3,6 +3,7 @@ import { addHours } from "date-fns"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { sendEmail, clientReminderEmail } from "@/lib/email"
+import { getLocationAddress } from "@/lib/addresses"
 
 /**
  * Cron job — runs daily (see vercel.json). Finds CONFIRMED bookings that
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
       durationMin: booking.durationMin,
       priceEur: booking.servicePrice,
       location: booking.location === "lisboa" ? "Lisboa" : "Setúbal",
+      address: getLocationAddress(booking.location),
       whenLocal: formatLisbon(
         booking.startUtc,
         "EEEE, dd 'de' MMMM 'às' HH:mm",

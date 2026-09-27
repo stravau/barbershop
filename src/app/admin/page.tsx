@@ -80,19 +80,19 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="font-display text-3xl tracking-[0.06em] text-gold">
+        <h1 className="font-display text-3xl tracking-[0.06em] text-accent">
           ADMIN
         </h1>
         <div className="flex items-center gap-4">
           <Link
             href="/admin/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm text-foreground/80 hover:text-gold transition"
+            className="inline-flex items-center gap-1.5 text-sm text-foreground/80 hover:text-ink transition"
           >
             <BarChart3 className="h-4 w-4" /> Dashboard
           </Link>
           <a
             href="/api/admin/auth/logout"
-            className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-gold transition"
+            className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink transition"
           >
             <LogOut className="h-4 w-4" /> Sair
           </a>
@@ -183,7 +183,7 @@ type BookingWithClient = Prisma.BookingGetPayload<{ include: { client: true } }>
 
 function BookingCard({ b }: { b: BookingWithClient }) {
   return (
-    <div className="card-lift rounded-lg border border-border bg-background-elevated p-4">
+    <div className="rounded-lg border border-border bg-background-elevated p-4">
       <Link
         href={`/admin/booking/${b.id}?token=${b.adminToken}`}
         className="block hover:opacity-95 transition"
@@ -192,7 +192,7 @@ function BookingCard({ b }: { b: BookingWithClient }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <StatusPill status={b.status} />
-              <span className="font-display text-lg tracking-wider text-gold">
+              <span className="font-display text-lg tracking-wider text-accent">
                 {b.serviceName}
               </span>
               <span className="text-muted text-sm">·</span>
@@ -217,7 +217,7 @@ function BookingCard({ b }: { b: BookingWithClient }) {
           <div className="text-xs text-muted whitespace-nowrap">
             {b.client.loyaltyCount > 0 && (
               <span className="inline-flex items-center gap-1">
-                <Award className="h-3 w-3 text-gold" />
+                <Award className="h-3 w-3 text-accent" />
                 {b.client.loyaltyCount} cortes
               </span>
             )}
@@ -229,7 +229,7 @@ function BookingCard({ b }: { b: BookingWithClient }) {
         <div className="mt-3 pt-3 border-t border-border flex gap-2">
           <a
             href={`/api/admin/bookings/${b.id}/confirm?token=${b.adminToken}&from=admin`}
-            className="flex-1 rounded-md bg-success px-4 py-2 font-semibold text-black text-center text-sm hover:brightness-110 transition"
+            className="flex-1 rounded-md bg-success px-4 py-2 font-semibold text-paper text-center text-sm hover:brightness-110 transition"
           >
             ✓ Confirmar
           </a>
@@ -277,7 +277,7 @@ function CompletedByMonth({ bookings }: { bookings: BookingWithClient[] }) {
         return (
           <div key={monthKey}>
             <div className="mb-3 flex items-end justify-between gap-3 border-b border-border pb-2">
-              <h2 className="font-display text-xl tracking-[0.1em] text-gold">
+              <h2 className="font-display text-xl tracking-[0.1em] text-accent">
                 {monthLabel}
               </h2>
               <div className="text-xs text-muted">
@@ -373,8 +373,8 @@ function FilterChip({
       href={href}
       className={
         active
-          ? "rounded-full bg-gold text-black px-3 py-1 text-xs font-semibold inline-flex items-center gap-1.5"
-          : "rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground/80 hover:border-gold hover:text-gold transition inline-flex items-center gap-1.5"
+          ? "rounded-full bg-yellow text-ink px-3 py-1 text-xs font-semibold inline-flex items-center gap-1.5"
+          : "rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground/80 hover:border-ink hover:text-ink transition inline-flex items-center gap-1.5"
       }
     >
       {children}
@@ -382,7 +382,7 @@ function FilterChip({
         <span
           className={
             active
-              ? "rounded-full bg-black/15 px-1.5 py-0.5 text-[10px]"
+              ? "rounded-full bg-ink/15 px-1.5 py-0.5 text-[10px]"
               : "rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px]"
           }
         >
@@ -425,7 +425,7 @@ function FlashBanner({ flash, code }: { flash: string; code?: string }) {
       ? "border-success/40 bg-success/5 text-success"
       : tone === "danger"
         ? "border-danger/40 bg-danger/5 text-danger"
-        : "border-border bg-background-elevated text-gold"
+        : "border-border bg-background-elevated text-accent"
 
   return (
     <div className={`mb-6 rounded-lg border p-4 ${cls}`}>
@@ -441,8 +441,8 @@ function StatusPill({ status }: { status: string }) {
     { color: string; bg: string; icon: React.ReactNode; label: string }
   > = {
     PENDING: {
-      color: "text-gold",
-      bg: "bg-gold/10 border-gold/30",
+      color: "text-accent",
+      bg: "bg-yellow/25 border-ink/30",
       icon: <Clock className="h-3 w-3" />,
       label: "Pendente",
     },

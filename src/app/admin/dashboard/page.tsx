@@ -155,19 +155,19 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin"
-            className="inline-flex items-center gap-1 text-sm text-muted hover:text-gold transition"
+            className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Marcações
           </Link>
           <span className="text-muted">/</span>
-          <h1 className="font-display text-3xl tracking-[0.06em] text-gold">
+          <h1 className="font-display text-3xl tracking-[0.06em] text-accent">
             DASHBOARD
           </h1>
         </div>
         <a
           href="/api/admin/auth/logout"
-          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-gold transition"
+          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink transition"
         >
           <LogOut className="h-4 w-4" /> Sair
         </a>
@@ -263,7 +263,7 @@ export default async function DashboardPage() {
               locationCounts.map((row) => (
                 <div key={row.location} className="flex items-center justify-between">
                   <span className="inline-flex items-center gap-2 text-foreground">
-                    <MapPin className="h-4 w-4 text-gold" />
+                    <MapPin className="h-4 w-4 text-accent" />
                     {row.location === "lisboa" ? "Lisboa" : "Setúbal"}
                   </span>
                   <span className="text-sm">
@@ -321,7 +321,7 @@ export default async function DashboardPage() {
               topClients.map((c) => (
                 <div key={c.id} className="flex items-center justify-between text-sm">
                   <span className="text-foreground">{c.name}</span>
-                  <span className="inline-flex items-center gap-1 text-gold">
+                  <span className="inline-flex items-center gap-1 text-accent">
                     <Award className="h-3 w-3" />
                     {c.loyaltyCount}
                   </span>
@@ -384,7 +384,7 @@ function RevenueCard({
       className={
         "rounded-lg border p-4 " +
         (highlight
-          ? "border-gold/40 bg-gold/5"
+          ? "border-ink/40 bg-yellow/20"
           : "border-border bg-background-elevated")
       }
     >
@@ -392,7 +392,7 @@ function RevenueCard({
       <div
         className={
           "mt-1 font-display text-2xl tracking-wider " +
-          (highlight ? "text-gold" : "text-foreground")
+          (highlight ? "text-accent" : "text-foreground")
         }
       >
         {formatPrice(amount)}
@@ -418,7 +418,7 @@ function StatusCard({
 }) {
   const cls =
     tone === "gold"
-      ? "border-gold/30 bg-gold/5 text-gold"
+      ? "border-ink/30 bg-yellow/20 text-accent"
       : tone === "success"
         ? "border-success/30 bg-success/5 text-success"
         : "border-danger/30 bg-danger/5 text-danger"

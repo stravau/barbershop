@@ -19,8 +19,8 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
   return (
     <main className="mx-auto max-w-md px-4 py-20">
       <div className="text-center mb-8">
-        <Lock className="h-10 w-10 text-gold mx-auto mb-3" />
-        <h1 className="font-display text-3xl tracking-[0.08em] text-gold">
+        <Lock className="h-10 w-10 text-accent mx-auto mb-3" />
+        <h1 className="font-display text-3xl tracking-[0.08em] text-accent">
           ADMIN
         </h1>
         <p className="mt-3 text-muted text-sm">
@@ -41,7 +41,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
             name="password"
             required
             autoFocus
-            className="w-full rounded-md border border-border bg-background px-4 py-2 focus:border-gold focus:outline-none"
+            className="w-full rounded-md border border-border bg-background px-4 py-2 focus:border-ink focus:outline-none"
           />
         </label>
         {error === "wrong" && (
@@ -52,7 +52,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
             Admin password não configurada no servidor (env var ADMIN_PASSWORD).
           </div>
         )}
-        <button type="submit" className="btn-gold rounded-md w-full py-2.5">
+        <button type="submit" className="btn rounded-md w-full py-2.5">
           Entrar
         </button>
       </form>
@@ -61,7 +61,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
 }
 
 export function generateMetadata() {
-  return { title: "Admin · Tarzan's Barbershop", robots: "noindex" }
+  return { title: "Admin", robots: "noindex" }
 }
 
 // Avoid static export of this page so the form can post fresh every time.

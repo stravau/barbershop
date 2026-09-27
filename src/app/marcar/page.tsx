@@ -2,23 +2,14 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { format } from "date-fns"
+import { ArrowLeft, ChevronRight, Check, AlertCircle } from "lucide-react"
 import {
-  ArrowLeft,
-  ChevronRight,
-  MapPin,
-  Calendar as CalendarIcon,
-  Sparkles,
-  Scissors,
-  Star,
-  Award,
-  Check,
-  AlertCircle,
-} from "lucide-react"
-import {
+  DAY_SHORT,
   LOCATIONS,
-  getNextOpenDate,
-  isLocationOpenOn,
+  openDaysSummary,
+  upcomingOpenDates,
+  ymdDayOfWeek,
+  ymdPlusDays,
   type LocationId,
 } from "@/lib/schedule"
 import {
@@ -26,22 +17,16 @@ import {
   buildCombo,
   validateSelection,
   formatPrice,
-  marginalPrice,
+  priceInSelection,
   parseServicesParam,
   type ServiceId,
   type Combo,
 } from "@/lib/services"
-import { formatLisbon, getLisbonDayOfWeek } from "@/lib/tz"
+import { formatLisbon } from "@/lib/tz"
+import { whatsappUrl } from "@/lib/site"
 import { cn } from "@/lib/utils"
 
-type Step =
-  | "services"
-  | "location"
-  | "date"
-  | "slot"
-  | "details"
-  | "confirm"
-  | "success"
+type Step = "services" | "when" | "details" | "confirm" | "success"
 
 interface BookingState {
   services?: ServiceId[]
@@ -63,14 +48,26 @@ interface SuccessPayload {
   location: LocationId
 }
 
-const todayLocal = () => format(new Date(), "yyyy-MM-dd")
-const maxDateLocal = () => {
-  const d = new Date()
-  d.setDate(d.getDate() + 60)
-  return format(d, "yyyy-MM-dd")
+/** How far ahead a booking can be made. */
+const BOOKING_WINDOW_DAYS = 60
+/** Days shown before "Ver mais dias". */
+const DAYS_SHOWN = 14
+const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+
+const todayLisbon = () => formatLisbon(new Date(), "yyyy-MM-dd")
+const noonUtc = (ymd: string) => new Date(`${ymd}T12:00:00Z`)
+
+const STEPS: Step[] = ["services", "when", "details", "confirm"]
+
+const STEP_LABEL: Record<Step, string> = {
+  services: "Serviço",
+  when: "Cidade, dia e hora",
+  details: "Os teus dados",
+  confirm: "Confirmar",
+  success: "",
 }
 
-const STEPS: Step[] = ["services", "location", "date", "slot", "details", "confirm"]
+const cityName = (id: LocationId) => (id === "lisboa" ? "Lisboa" : "Setúbal")
 
 export default function MarcarPage() {
   return (
@@ -82,10 +79,8 @@ export default function MarcarPage() {
 
 function MarcarFallback() {
   return (
-    <main className="border-b border-border">
-      <div className="mx-auto max-w-3xl px-4 py-20 text-center text-muted">
-        A carregar…
-      </div>
+    <main className="mx-auto max-w-3xl px-4 py-20 text-muted sm:px-6">
+      A carregar…
     </main>
   )
 }
@@ -97,7 +92,7 @@ function MarcarFlow() {
 
   // Skip "services" step if URL pre-fills a valid selection
   const [step, setStep] = useState<Step>(
-    validInitial.ok && initialServices.length > 0 ? "location" : "services",
+    validInitial.ok && initialServices.length > 0 ? "when" : "services",
   )
   const [state, setState] = useState<BookingState>(
     validInitial.ok ? { services: initialServices } : {},
@@ -111,75 +106,36 @@ function MarcarFlow() {
   }
 
   return (
-    <main className="border-b border-border">
-      <div className="mx-auto max-w-3xl px-4 py-16 sm:py-20">
-        <div className="text-center mb-10">
-          <div className="gold-divider mx-auto max-w-xs mb-4">
-            <CalendarIcon className="h-4 w-4" />
-          </div>
-          <h1 className="font-display text-4xl sm:text-5xl text-gold tracking-[0.08em]">
-            MARCAR
-          </h1>
-          <p className="text-muted mt-3 text-sm">
-            {step === "success"
-              ? "Marcação enviada com sucesso."
-              : `Passo ${stepNumber(step)} de ${STEPS.length}`}
-          </p>
+    <main>
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+        <div className="mb-8">
+          <h1 className="print-shadow text-5xl sm:text-6xl">Marcar</h1>
+          {step !== "success" && <StepProgress step={step} />}
         </div>
 
-        <div className="rounded-xl border border-border bg-background-elevated p-6 sm:p-8">
+        <div className="rounded-lg border-2 border-ink bg-card p-5 shadow-[6px_6px_0_var(--ink)] sm:p-8">
           {step === "services" && (
             <ServicesStep
               initial={state.services ?? []}
               onPick={(services) => {
                 setState((s) => ({ ...s, services }))
-                setStep("location")
+                setStep("when")
               }}
             />
           )}
 
-          {step === "location" && state.services && (
-            <LocationStep
+          {step === "when" && state.services && (
+            <WhenStep
               services={state.services}
+              initialLocation={state.location}
+              initialDate={state.date}
               onBack={() => setStep("services")}
-              onPick={(location) => {
-                setState((s) => ({ ...s, location }))
-                setStep("date")
+              onPick={({ location, date, slotIso }) => {
+                setState((s) => ({ ...s, location, date, slotIso }))
+                setStep("details")
               }}
             />
           )}
-
-          {step === "date" && state.location && state.services && (
-            <DateStep
-              services={state.services}
-              location={state.location}
-              onBack={() => setStep("location")}
-              onPick={(date) => {
-                setState((s) => ({ ...s, date }))
-                setStep("slot")
-              }}
-            />
-          )}
-
-          {step === "slot" &&
-            state.location &&
-            state.services &&
-            state.date && (
-              <SlotStep
-                services={state.services}
-                location={state.location}
-                date={state.date}
-                onBack={() => setStep("date")}
-                onChangeLocation={() => setStep("location")}
-                onJumpToDate={(date) =>
-                  setState((s) => ({ ...s, date }))
-                }
-                onPick={(slotIso) => {
-                  setState((s) => ({ ...s, slotIso }))
-                  setStep("details")
-                }}
-              />
-            )}
 
           {step === "details" && (
             <DetailsStep
@@ -189,7 +145,7 @@ function MarcarFlow() {
                 email: state.email ?? "",
                 notes: state.notes ?? "",
               }}
-              onBack={() => setStep("slot")}
+              onBack={() => setStep("when")}
               onSubmit={(data) => {
                 setState((s) => ({ ...s, ...data }))
                 setStep("confirm")
@@ -224,19 +180,26 @@ function stepNumber(step: Step): number {
   return Math.min(STEPS.indexOf(step) + 1, STEPS.length)
 }
 
-function ServiceIcon({ id, className }: { id: string; className?: string }) {
-  switch (id) {
-    case "corte":
-      return <Scissors className={className} />
-    case "barba":
-      return <Sparkles className={className} />
-    case "sobrancelha":
-      return <Star className={className} />
-    case "alinhamento":
-      return <Award className={className} />
-    default:
-      return <Scissors className={className} />
-  }
+function StepProgress({ step }: { step: Step }) {
+  const n = stepNumber(step)
+  return (
+    <div className="mt-5">
+      <div className="flex gap-1.5" aria-hidden="true">
+        {STEPS.map((s, i) => (
+          <span
+            key={s}
+            className={cn(
+              "h-2.5 flex-1 rounded-full border-2 border-ink",
+              i < n ? "bg-yellow" : "bg-transparent",
+            )}
+          />
+        ))}
+      </div>
+      <p className="caps mt-2 text-sm text-muted">
+        Passo {n} de {STEPS.length} · {STEP_LABEL[step]}
+      </p>
+    </div>
+  )
 }
 
 // ---------- STEP 1: services (multi-select) ----------
@@ -266,49 +229,48 @@ function ServicesStep({
 
   return (
     <div>
-      <h2 className="text-xl mb-5 font-display tracking-wider">
-        Que serviços queres?
-      </h2>
-      <p className="text-sm text-muted mb-5">
-        Podes escolher mais do que um. Combos têm preço reduzido.
+      <StepTitle>Que serviços queres?</StepTitle>
+      <p className="mb-5 text-muted">
+        Podes escolher mais do que um — os combos saem mais baratos.
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         {SERVICES.map((s) => {
           const isSelected = selected.has(s.id as ServiceId)
           const conflict =
             s.id === "alinhamento" && selected.has("corte")
-          const marginal = marginalPrice([...selected], s.id as ServiceId)
+          const price = priceInSelection([...selected], s.id as ServiceId)
           const hasDiscount =
-            !isSelected && !conflict && marginal < s.priceEur - 0.01
+            !conflict && price < s.priceEur - 0.01
 
           return (
             <button
               key={s.id}
               type="button"
               onClick={() => toggle(s.id as ServiceId)}
+              aria-pressed={isSelected}
               className={cn(
-                "card-lift relative rounded-lg border border-border bg-background p-4 text-left",
-                isSelected && "card-selected",
+                "relative rounded-md border-2 p-4 text-left transition",
+                isSelected
+                  ? "border-ink bg-yellow/30 shadow-[3px_3px_0_var(--ink)]"
+                  : "border-ink/20 bg-paper hover:border-ink",
+                conflict && !isSelected && "opacity-50",
               )}
             >
-              <div
+              <span
                 className={cn(
-                  "absolute top-3 right-3 h-5 w-5 rounded border flex items-center justify-center",
-                  isSelected ? "border-gold bg-gold text-black" : "border-border",
+                  "absolute top-3 right-3 grid h-5 w-5 place-items-center rounded border-2 border-ink",
+                  isSelected && "bg-ink text-yellow",
                 )}
               >
                 {isSelected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-              </div>
+              </span>
 
-              <div className="flex items-center gap-2 pr-7">
-                <ServiceIcon id={s.id} className="h-5 w-5 text-gold" />
-                <span className="font-semibold">{s.name}</span>
-              </div>
-              <div className="mt-1 text-xs text-muted pr-7 leading-relaxed">
+              <span className="caps block pr-7 text-lg">{s.name}</span>
+              <span className="mt-1 block pr-7 text-sm leading-relaxed text-muted">
                 {s.description}
-              </div>
-              <div className="mt-3 flex items-baseline justify-between text-sm">
+              </span>
+              <span className="mt-3 flex items-baseline justify-between text-sm">
                 <span className="text-muted">
                   {s.durationMin} min{hasDiscount ? " · com combo" : ""}
                 </span>
@@ -317,52 +279,39 @@ function ServicesStep({
                     <span className="text-xs text-muted line-through">
                       {formatPrice(s.priceEur)}
                     </span>
-                    <span className="font-display text-gold">
-                      {formatPrice(marginal)}
-                    </span>
+                    <span className="font-display text-lg">{formatPrice(price)}</span>
                   </span>
                 ) : (
-                  <span className="font-display text-gold">
-                    {formatPrice(s.priceEur)}
-                  </span>
+                  <span className="font-display text-lg">{formatPrice(s.priceEur)}</span>
                 )}
-              </div>
+              </span>
             </button>
           )
         })}
       </div>
 
-      {!validation.ok && (
-        <div className="mt-5 flex gap-3 text-danger text-sm rounded-md border border-danger/40 bg-danger/5 p-3">
+      {!validation.ok && selected.size > 0 && (
+        <div className="mt-5 flex gap-3 rounded-md border-2 border-danger/50 bg-danger/5 p-3 text-sm text-danger">
           <AlertCircle className="h-5 w-5 flex-shrink-0" />
           <span>{validation.error}</span>
         </div>
       )}
 
       {combo && (
-        <div className="mt-5 rounded-lg border border-gold/40 bg-gold/5 p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <div>
-              <div className="font-display text-lg text-gold">{combo.name}</div>
-              <div className="text-xs text-muted mt-0.5">
-                {combo.durationMin} minutos
-              </div>
-            </div>
-            <div className="font-display text-2xl text-gold">
-              {formatPrice(combo.priceEur)}
-            </div>
+        <div className="mt-5 flex flex-wrap items-baseline justify-between gap-3 rounded-md border-2 border-ink bg-paper p-4">
+          <div>
+            <div className="caps text-lg">{combo.name}</div>
+            <div className="text-sm text-muted">{combo.durationMin} minutos</div>
           </div>
+          <div className="font-display text-3xl">{formatPrice(combo.priceEur)}</div>
         </div>
       )}
 
-      <div className="mt-6 flex justify-end">
+      <div className="mt-7 flex justify-end">
         <button
           disabled={!combo}
           onClick={() => combo && onPick([...selected])}
-          className={cn(
-            "btn-gold rounded-md px-6 py-2.5 inline-flex items-center gap-2",
-            !combo && "opacity-50 cursor-not-allowed",
-          )}
+          className="btn"
         >
           Continuar <ChevronRight className="h-4 w-4" />
         </button>
@@ -371,115 +320,186 @@ function ServicesStep({
   )
 }
 
-// ---------- STEP 2: location ----------
-function LocationStep({
+// ---------- STEP 2: city, day and time ----------
+function WhenStep({
   services,
-  onPick,
+  initialLocation,
+  initialDate,
   onBack,
+  onPick,
 }: {
   services: ServiceId[]
-  onPick: (id: LocationId) => void
+  initialLocation?: LocationId
+  initialDate?: string
   onBack: () => void
+  onPick: (p: { location: LocationId; date: string; slotIso: string }) => void
 }) {
   const combo = buildCombo(services)
+  const [location, setLocation] = useState<LocationId | undefined>(initialLocation)
+  const [date, setDate] = useState<string | undefined>(initialDate)
+  const [showAllDays, setShowAllDays] = useState(false)
+
+  const today = todayLisbon()
+  // Only the days the barber is actually in the chosen city
+  const days = useMemo(
+    () => (location ? upcomingOpenDates(location, today, BOOKING_WINDOW_DAYS) : []),
+    [location, today],
+  )
+  const activeDate = date && days.includes(date) ? date : days[0]
+  const activeIdx = activeDate ? days.indexOf(activeDate) : -1
+  const visibleDays =
+    showAllDays || activeIdx >= DAYS_SHOWN ? days : days.slice(0, DAYS_SHOWN)
+  const nextDay = activeIdx >= 0 ? days[activeIdx + 1] : undefined
+
+  function pickLocation(id: LocationId) {
+    setLocation(id)
+    setDate(undefined)
+    setShowAllDays(false)
+  }
+
   return (
     <div>
       <BackButton onClick={onBack} />
-      <h2 className="text-xl mb-1 font-display tracking-wider">
-        Onde queres cortar?
-      </h2>
-      <p className="text-xs text-muted mb-5">
+      <StepTitle>Onde e quando?</StepTitle>
+      <p className="mb-6 text-sm text-muted">
         {combo.name} · {combo.durationMin} min · {formatPrice(combo.priceEur)}
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        {LOCATIONS.map((loc) => (
-          <button
-            key={loc.id}
-            onClick={() => onPick(loc.id)}
-            className="card-lift group rounded-lg border border-border bg-background p-6 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <MapPin className="h-6 w-6 text-gold" />
-              <span className="font-display text-2xl tracking-[0.1em] text-gold">
-                {loc.name.toUpperCase()}
+      <FieldLabel>Cidade</FieldLabel>
+      <div className="grid grid-cols-2 gap-3">
+        {LOCATIONS.map((loc) => {
+          const selected = location === loc.id
+          return (
+            <button
+              key={loc.id}
+              type="button"
+              onClick={() => pickLocation(loc.id)}
+              aria-pressed={selected}
+              className={cn(
+                "rounded-md border-2 p-4 text-left transition",
+                selected
+                  ? "border-ink bg-yellow/30 shadow-[3px_3px_0_var(--ink)]"
+                  : "border-ink/20 bg-paper hover:border-ink",
+              )}
+            >
+              <span className="font-display block text-2xl sm:text-3xl">{loc.name}</span>
+              <span className="caps mt-1 block text-sm text-muted">
+                {openDaysSummary(loc.id)}
               </span>
-            </div>
-            <div className="mt-3 text-sm text-muted">
-              {loc.id === "setubal"
-                ? "Seg–Qui em horário alargado · Sex 14h–15h"
-                : "Sex 17h–20h · Sáb 10h–12h30"}
-            </div>
-          </button>
-        ))}
+            </button>
+          )
+        })}
       </div>
+
+      {location && (
+        <>
+          <FieldLabel className="mt-7">Dia</FieldLabel>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+            {visibleDays.map((d) => (
+              <DayChip
+                key={d}
+                ymd={d}
+                today={today}
+                selected={d === activeDate}
+                onClick={() => setDate(d)}
+              />
+            ))}
+          </div>
+          {visibleDays.length < days.length && (
+            <button
+              type="button"
+              onClick={() => setShowAllDays(true)}
+              className="link mt-3 text-sm font-semibold"
+            >
+              Ver mais dias
+            </button>
+          )}
+        </>
+      )}
+
+      {location && activeDate && (
+        <>
+          <FieldLabel className="mt-7">
+            Hora — {formatLisbon(noonUtc(activeDate), "EEEE, dd 'de' MMMM")}
+          </FieldLabel>
+          <DaySlots
+            key={`${location}|${activeDate}`}
+            location={location}
+            date={activeDate}
+            services={services}
+            onPick={(slotIso) => onPick({ location, date: activeDate, slotIso })}
+            onNextDay={nextDay ? () => setDate(nextDay) : undefined}
+            nextDayLabel={
+              nextDay ? formatLisbon(noonUtc(nextDay), "EEEE, dd 'de' MMMM") : undefined
+            }
+            onOtherCity={() => pickLocation(location === "lisboa" ? "setubal" : "lisboa")}
+          />
+        </>
+      )}
     </div>
   )
 }
 
-// ---------- STEP 3: date ----------
-function DateStep({
-  services,
-  location,
-  onPick,
-  onBack,
+function DayChip({
+  ymd,
+  today,
+  selected,
+  onClick,
 }: {
-  services: ServiceId[]
-  location: LocationId
-  onPick: (date: string) => void
-  onBack: () => void
+  ymd: string
+  today: string
+  selected: boolean
+  onClick: () => void
 }) {
-  const [date, setDate] = useState(todayLocal())
-  const combo = buildCombo(services)
+  const d = noonUtc(ymd)
+  const label =
+    ymd === today
+      ? "Hoje"
+      : ymd === ymdPlusDays(today, 1)
+        ? "Amanhã"
+        : DAY_SHORT[ymdDayOfWeek(ymd)]
   return (
-    <div>
-      <BackButton onClick={onBack} />
-      <h2 className="text-xl mb-2 font-display tracking-wider">Que dia?</h2>
-      <p className="text-muted mb-5 text-sm">
-        {combo.name} · {location === "lisboa" ? "Lisboa" : "Setúbal"}
-      </p>
-      <input
-        type="date"
-        value={date}
-        min={todayLocal()}
-        max={maxDateLocal()}
-        onChange={(e) => setDate(e.target.value)}
-        className="w-full rounded-md border border-border bg-background px-4 py-3 text-foreground focus:border-gold focus:outline-none"
-      />
-      <div className="mt-6 flex justify-end">
-        <button onClick={() => onPick(date)} className="btn-gold rounded-md px-6 py-2.5">
-          Ver horários
-        </button>
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "rounded-md border-2 px-1 py-2 text-center transition",
+        selected
+          ? "border-ink bg-yellow shadow-[3px_3px_0_var(--ink)]"
+          : "border-ink/20 bg-paper hover:border-ink",
+      )}
+    >
+      <span className="caps block text-xs">{label}</span>
+      <span className="font-display block text-2xl leading-tight">{d.getUTCDate()}</span>
+      <span className="block text-xs text-muted">{MONTH_SHORT[d.getUTCMonth()]}</span>
+    </button>
   )
 }
 
-// ---------- STEP 4: slot ----------
-function SlotStep({
-  services,
+/** Free slots for one day. Remounted (via `key`) whenever the day or city changes. */
+function DaySlots({
   location,
   date,
+  services,
   onPick,
-  onBack,
-  onChangeLocation,
-  onJumpToDate,
+  onNextDay,
+  nextDayLabel,
+  onOtherCity,
 }: {
-  services: ServiceId[]
   location: LocationId
   date: string
+  services: ServiceId[]
   onPick: (slotIso: string) => void
-  onBack: () => void
-  onChangeLocation: () => void
-  onJumpToDate: (date: string) => void
+  onNextDay?: () => void
+  nextDayLabel?: string
+  onOtherCity: () => void
 }) {
   const [slots, setSlots] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    setSlots(null)
-    setError(null)
     const url = `/api/slots?location=${location}&date=${date}&services=${services.join(",")}`
     fetch(url)
       .then(async (r) => {
@@ -497,106 +517,55 @@ function SlotStep({
     }
   }, [location, services, date])
 
-  const locationName = location === "lisboa" ? "Lisboa" : "Setúbal"
-  const otherLocation = location === "lisboa" ? "setubal" : "lisboa"
-  const otherLocationName = otherLocation === "lisboa" ? "Lisboa" : "Setúbal"
-  const dateFormatted = formatLisbon(
-    new Date(`${date}T12:00:00Z`),
-    "EEEE, dd 'de' MMMM",
-  )
+  if (error) {
+    return (
+      <div className="text-sm text-danger">
+        Não foi possível carregar as horas livres. Tenta outra vez daqui a pouco.
+        <span className="mt-1 block text-xs opacity-70">{error}</span>
+      </div>
+    )
+  }
 
-  // Detect if the location is closed on the chosen day-of-week (so we can
-  // show a clearer message + suggest the next day this location actually opens).
-  const dow = getLisbonDayOfWeek(date)
-  const locationClosedThisDay = !isLocationOpenOn(location, dow)
-  const nextOpen = locationClosedThisDay
-    ? getNextOpenDate(location, date)
-    : null
-  const nextOpenFormatted = nextOpen
-    ? formatLisbon(
-        new Date(`${nextOpen}T12:00:00Z`),
-        "EEEE, dd 'de' MMMM",
-      )
-    : null
+  if (slots === null) return <div className="text-muted">A ver a agenda…</div>
+
+  if (slots.length === 0) {
+    return (
+      <div className="rounded-md border-2 border-ink/20 bg-paper p-4">
+        <p className="font-semibold">Sem horas livres neste dia.</p>
+        <p className="mt-1 text-sm text-muted">
+          As horas já estão ocupadas ou o serviço não cabe nas que sobram.
+        </p>
+        <div className="mt-4 flex flex-col flex-wrap gap-3 sm:flex-row">
+          {onNextDay && nextDayLabel && (
+            <button type="button" onClick={onNextDay} className="btn btn-sm">
+              Ver {nextDayLabel}
+            </button>
+          )}
+          <button type="button" onClick={onOtherCity} className="btn-ghost px-4 py-1.5 text-sm">
+            Tentar em {cityName(location === "lisboa" ? "setubal" : "lisboa")}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div>
-      <BackButton onClick={onBack} />
-      <h2 className="text-xl mb-5 font-display tracking-wider">
-        Escolhe horário
-      </h2>
-      {slots === null && !error && (
-        <div className="text-muted">A carregar horários…</div>
-      )}
-      {error && <div className="text-danger text-sm">Erro: {error}</div>}
-
-      {slots && slots.length === 0 && (
-        <div className="rounded-lg border border-border bg-background p-5">
-          <p className="font-display text-lg text-gold mb-2">
-            Sem horários disponíveis
-          </p>
-          {locationClosedThisDay ? (
-            <p className="text-sm text-foreground/80">
-              Em <strong>{dateFormatted}</strong> não estamos em{" "}
-              <strong>{locationName}</strong>.{" "}
-              {nextOpenFormatted && (
-                <>
-                  A próxima data com {locationName} é{" "}
-                  <strong>{nextOpenFormatted}</strong>.
-                </>
-              )}
-            </p>
-          ) : (
-            <p className="text-sm text-foreground/80">
-              <strong>{locationName}</strong> não tem horários livres em{" "}
-              <strong>{dateFormatted}</strong> — os slots desse dia já estão
-              ocupados ou não cabem na duração do serviço.
-            </p>
-          )}
-          <p className="text-sm text-muted mt-3">Sugestões:</p>
-          <div className="mt-3 flex flex-col sm:flex-row gap-2 flex-wrap">
-            {nextOpen && nextOpenFormatted && (
-              <button
-                onClick={() => onJumpToDate(nextOpen)}
-                className="rounded-md bg-gold text-black px-4 py-2 text-sm font-semibold hover:brightness-110 transition"
-              >
-                Ver horários em {nextOpenFormatted}
-              </button>
-            )}
-            <button
-              onClick={onBack}
-              className="rounded-md border border-border bg-background-elevated px-4 py-2 text-sm hover:border-gold hover:text-gold transition"
-            >
-              Tentar outra data
-            </button>
-            <button
-              onClick={onChangeLocation}
-              className="rounded-md border border-border bg-background-elevated px-4 py-2 text-sm hover:border-gold hover:text-gold transition"
-            >
-              Tentar em {otherLocationName}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {slots && slots.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {slots.map((iso) => (
-            <button
-              key={iso}
-              onClick={() => onPick(iso)}
-              className="rounded-md border border-border bg-background px-3 py-2.5 hover:border-gold hover:text-gold hover:bg-background-elevated transition font-mono text-sm"
-            >
-              {formatLisbon(new Date(iso), "HH:mm")}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+      {slots.map((iso) => (
+        <button
+          key={iso}
+          type="button"
+          onClick={() => onPick(iso)}
+          className="rounded-md border-2 border-ink/20 bg-paper px-3 py-2.5 text-lg font-semibold tabular-nums transition hover:border-ink hover:bg-yellow"
+        >
+          {formatLisbon(new Date(iso), "HH:mm")}
+        </button>
+      ))}
     </div>
   )
 }
 
-// ---------- STEP 5: details ----------
+// ---------- STEP 3: details ----------
 function DetailsStep({
   initial,
   onSubmit,
@@ -637,15 +606,16 @@ function DetailsStep({
   return (
     <form onSubmit={handleSubmit}>
       <BackButton onClick={onBack} />
-      <h2 className="text-xl mb-5 font-display tracking-wider">Os teus dados</h2>
-      <div className="space-y-3">
+      <StepTitle>Os teus dados</StepTitle>
+      <div className="mt-5 space-y-4">
         <Field label="Nome">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            autoComplete="name"
             placeholder="João Silva"
-            className="w-full rounded-md border border-border bg-background px-4 py-2 focus:border-gold focus:outline-none"
+            className="input"
           />
         </Field>
         <Field label="Telemóvel (com indicativo, sem +)">
@@ -654,19 +624,21 @@ function DetailsStep({
             onChange={(e) => setPhone(e.target.value)}
             required
             inputMode="tel"
+            autoComplete="tel"
             placeholder="351912345678"
-            className="w-full rounded-md border border-border bg-background px-4 py-2 focus:border-gold focus:outline-none"
+            className="input"
           />
         </Field>
-        <Field label="Email (para confirmação)">
+        <Field label="Email (para receberes a confirmação)">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             inputMode="email"
+            autoComplete="email"
             placeholder="joao@exemplo.com"
-            className="w-full rounded-md border border-border bg-background px-4 py-2 focus:border-gold focus:outline-none"
+            className="input"
           />
         </Field>
         <Field label="Notas (opcional)">
@@ -674,21 +646,22 @@ function DetailsStep({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-border bg-background px-4 py-2 focus:border-gold focus:outline-none"
+            placeholder="Ex.: o tipo de corte que queres"
+            className="input"
           />
         </Field>
       </div>
-      {err && <div className="mt-3 text-danger text-sm">{err}</div>}
-      <div className="mt-6 flex justify-end">
-        <button type="submit" className="btn-gold rounded-md px-6 py-2.5">
-          Continuar
+      {err && <div className="mt-3 text-sm text-danger">{err}</div>}
+      <div className="mt-7 flex justify-end">
+        <button type="submit" className="btn">
+          Continuar <ChevronRight className="h-4 w-4" />
         </button>
       </div>
     </form>
   )
 }
 
-// ---------- STEP 6: confirm ----------
+// ---------- STEP 4: confirm ----------
 function ConfirmStep({
   state,
   onBack,
@@ -747,43 +720,36 @@ function ConfirmStep({
   return (
     <div>
       <BackButton onClick={onBack} />
-      <h2 className="text-xl mb-5 font-display tracking-wider">
-        Confirma os dados
-      </h2>
-      <div className="rounded-lg border border-border bg-background p-5 space-y-2">
-        <Row
-          label="Localização"
-          value={state.location === "lisboa" ? "Lisboa" : "Setúbal"}
-        />
+      <StepTitle>Confere e envia</StepTitle>
+      <div className="mt-5 space-y-2 rounded-md border-2 border-ink/20 bg-paper p-5">
+        <Row label="Cidade" value={cityName(state.location)} />
         <Row label="Serviço" value={`${combo.name} (${combo.durationMin} min)`} />
         <Row label="Preço" value={formatPrice(combo.priceEur)} />
         <Row label="Quando" value={whenLocal} />
-        <Row label="Cliente" value={`${state.name} · ${state.phone}`} />
+        <Row label="Nome" value={`${state.name} · ${state.phone}`} />
         <Row label="Email" value={state.email} />
         {state.notes && <Row label="Notas" value={state.notes} />}
       </div>
       <p className="mt-4 text-sm text-muted">
-        Pagamento no local: <strong className="text-foreground">MBWay</strong> ou{" "}
-        <strong className="text-foreground">dinheiro</strong>.
+        Pagas no fim, em <strong className="text-ink">MB WAY</strong> ou{" "}
+        <strong className="text-ink">dinheiro</strong>. Depois de enviares o
+        pedido, recebes a confirmação por email.
       </p>
-      {error && <div className="mt-3 text-danger text-sm">{error}</div>}
-      <div className="mt-6 flex justify-end">
+      {error && <div className="mt-3 text-sm text-danger">{error}</div>}
+      <div className="mt-7 flex justify-end">
         <button
           disabled={submitting}
           onClick={confirm}
-          className={cn(
-            "btn-gold rounded-md px-6 py-2.5",
-            submitting && "opacity-50 cursor-wait",
-          )}
+          className={cn("btn", submitting && "cursor-wait")}
         >
-          {submitting ? "A confirmar…" : "Confirmar marcação"}
+          {submitting ? "A enviar…" : "Enviar pedido"}
         </button>
       </div>
     </div>
   )
 }
 
-// ---------- STEP 7: success ----------
+// ---------- done: success ----------
 function SuccessStep({
   payload,
   onReset,
@@ -791,70 +757,67 @@ function SuccessStep({
   payload: SuccessPayload
   onReset: () => void
 }) {
-  const shopPhone = process.env.NEXT_PUBLIC_SHOP_PHONE
+  const whatsapp = whatsappUrl()
   const viewUrl = `/marcacao/${payload.bookingId}?token=${payload.clientToken}`
   return (
     <div className="text-center">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-gold">
-        <Sparkles className="h-7 w-7 text-gold" />
-      </div>
-      <div className="font-display text-3xl tracking-[0.1em] text-gold mb-2">
-        MARCAÇÃO ENVIADA
-      </div>
-      <p className="text-foreground/80 mt-2">{payload.whenLocal}</p>
+      <p className="font-script -rotate-3 text-5xl text-jungle">Obrigado!</p>
+      <h2 className="mt-4 text-3xl sm:text-4xl">Pedido enviado</h2>
+      <p className="mt-4 text-lg font-semibold">{payload.whenLocal}</p>
       <p className="mt-1 text-muted">
         {payload.serviceName} · {formatPrice(payload.priceEur)} ·{" "}
-        {payload.location === "lisboa" ? "Lisboa" : "Setúbal"}
+        {cityName(payload.location)}
       </p>
-      <p className="mt-5 text-sm text-muted">
-        Status: <span className="text-gold">PENDENTE</span> — já te enviámos um
-        email com os detalhes e vais receber outro assim que o barbeiro a
-        aprovar.
+      <p className="mx-auto mt-6 max-w-md text-ink/80">
+        A marcação fica <strong>pendente</strong> até ser confirmada —
+        normalmente em poucas horas. Vais receber a confirmação por email, com
+        a localização.
       </p>
-      <p className="mt-3 text-xs text-muted/80">
-        Não vês o email passados alguns minutos? Verifica a pasta de{" "}
-        <strong className="text-foreground/90">spam / lixo eletrónico</strong>{" "}
-        e marca como &ldquo;Não é spam&rdquo; para garantir que recebes os
-        próximos.
+      <p className="mx-auto mt-3 max-w-md text-sm text-muted">
+        Não chegou nada em alguns minutos? Espreita a pasta de{" "}
+        <strong className="text-ink">spam / lixo eletrónico</strong> e marca
+        como &ldquo;Não é spam&rdquo; para receberes os próximos.
       </p>
 
-      <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
-        <a
-          href={viewUrl}
-          className="rounded-md border border-gold/40 px-6 py-2.5 text-gold hover:bg-gold/10 transition"
-        >
-          Ver detalhes da marcação
+      <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+        <a href={viewUrl} className="btn-ghost">
+          Ver estado da marcação
         </a>
-        {shopPhone && (
-          <a
-            href={`https://wa.me/${shopPhone}`}
-            target="_blank"
-            rel="noopener"
-            className="rounded-md bg-[#25D366] px-6 py-2.5 font-semibold text-black hover:brightness-110 transition"
-          >
+        {whatsapp && (
+          <a href={whatsapp} target="_blank" rel="noopener" className="btn-whatsapp">
             Falar no WhatsApp
           </a>
         )}
       </div>
 
-      <div className="mt-6">
-        <button
-          onClick={onReset}
-          className="text-gold underline text-sm hover:text-gold-bright"
-        >
-          Fazer outra marcação
-        </button>
-      </div>
+      <button onClick={onReset} className="link mt-7 text-sm font-semibold">
+        Fazer outra marcação
+      </button>
     </div>
   )
 }
 
 // ---------- atoms ----------
+function StepTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="mb-2 text-2xl sm:text-3xl">{children}</h2>
+}
+
+function FieldLabel({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return <p className={cn("caps mb-2.5 text-sm text-muted", className)}>{children}</p>
+}
+
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-gold transition"
+      className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-muted transition hover:text-ink"
     >
       <ArrowLeft className="h-3.5 w-3.5" /> Voltar
     </button>
@@ -870,7 +833,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-sm text-muted mb-1.5">{label}</span>
+      <span className="mb-1.5 block text-sm font-semibold">{label}</span>
       {children}
     </label>
   )
@@ -880,7 +843,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-wrap justify-between gap-2 text-sm">
       <span className="text-muted">{label}</span>
-      <span className="text-foreground">{value}</span>
+      <span className="font-semibold">{value}</span>
     </div>
   )
 }

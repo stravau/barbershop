@@ -39,7 +39,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </p>
           <Link
             href="/admin"
-            className="mt-6 inline-block btn-gold rounded-md px-6 py-2.5"
+            className="mt-6 inline-block btn rounded-md px-6 py-2.5"
           >
             Voltar ao painel
           </Link>
@@ -68,7 +68,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </p>
           <Link
             href={`/admin/login?next=${encodeURIComponent(`/admin/booking/${id}`)}`}
-            className="mt-6 inline-block btn-gold rounded-md px-6 py-2.5"
+            className="mt-6 inline-block btn rounded-md px-6 py-2.5"
           >
             Login
           </Link>
@@ -145,7 +145,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           <div className="my-5 flex flex-col sm:flex-row gap-2">
             <a
               href={`/api/admin/bookings/${booking.id}/confirm?token=${booking.adminToken}&from=admin`}
-              className="rounded-md bg-success px-6 py-2.5 font-semibold text-black hover:brightness-110 transition text-center"
+              className="rounded-md bg-success px-6 py-2.5 font-semibold text-paper hover:brightness-110 transition text-center"
             >
               ✓ Confirmar
             </a>
@@ -168,7 +168,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </div>
         )}
 
-        <h1 className="font-display text-2xl sm:text-3xl tracking-[0.06em] text-gold mt-2">
+        <h1 className="font-display text-2xl sm:text-3xl tracking-[0.06em] text-accent mt-2">
           {booking.serviceName}
         </h1>
 
@@ -196,7 +196,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
       <div className="mt-6 text-center">
         <Link
           href="/admin"
-          className="text-gold underline text-sm hover:text-gold-bright"
+          className="text-accent underline text-sm hover:text-ink"
         >
           Voltar ao painel
         </Link>
@@ -232,7 +232,7 @@ function Banner({
   tone: "success" | "danger" | "muted"
 }) {
   const color =
-    tone === "success" ? "text-success" : tone === "danger" ? "text-danger" : "text-gold"
+    tone === "success" ? "text-success" : tone === "danger" ? "text-danger" : "text-accent"
   return (
     <div className={`flex items-start gap-3 mb-4 ${color}`}>
       <div className="flex-shrink-0">{icon}</div>
