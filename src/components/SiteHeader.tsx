@@ -3,10 +3,12 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { InstagramIcon } from "@/components/InstagramIcon"
 import { Wordmark } from "@/components/Wordmark"
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
 
 const NAV = [
-  { href: "/servicos", label: "Preços", className: "hidden min-[360px]:inline" },
+  { href: "/servicos", label: "Preços", className: "hidden min-[380px]:inline" },
   { href: "/#horario", label: "Horário", className: "hidden sm:inline" },
 ] as const
 
@@ -15,14 +17,14 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         <Link
           href="/"
           aria-label="Tarzan's Barbershop — início"
-          className="flex items-center gap-2.5 text-[1.3rem] sm:gap-3 sm:text-[1.6rem]"
+          className="flex items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem]"
         >
           {/* Round crop into the illustration (the file has wide black margins) */}
-          <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 border-ink bg-black sm:h-12 sm:w-12">
+          <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-ink bg-black sm:h-12 sm:w-12">
             <Image
               src="/logo.jpeg"
               alt=""
@@ -35,7 +37,7 @@ export function SiteHeader() {
           <Wordmark />
         </Link>
 
-        <nav className="flex items-center gap-4 sm:gap-7">
+        <nav className="flex items-center gap-3 sm:gap-6">
           {NAV.map((item) => (
             <Link
               key={item.href}
@@ -46,6 +48,16 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener"
+            aria-label={`Instagram @${INSTAGRAM_HANDLE}`}
+            title={`Segue-nos no Instagram @${INSTAGRAM_HANDLE}`}
+            className="grid h-9 w-9 place-items-center rounded-md transition hover:bg-paper-dark"
+          >
+            <InstagramIcon className="h-6 w-6" />
+          </a>
           {pathname !== "/marcar" && (
             <Link href="/marcar" className="btn btn-sm">
               Marcar

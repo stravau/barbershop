@@ -35,7 +35,7 @@ export default async function OpengraphImage() {
       >
         <div style={{ display: "flex", flexDirection: "column", padding: "64px 0 0 72px" }}>
           <div style={{ fontSize: 24, fontWeight: 700, color: "#6b6152", letterSpacing: 1 }}>
-            BARBEIRO INDEPENDENTE · SETÚBAL & LISBOA
+            SETÚBAL & LISBOA
           </div>
           <div
             style={{

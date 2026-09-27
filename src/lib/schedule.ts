@@ -7,9 +7,11 @@ export interface Location {
   name: string
 }
 
+// Listed in the order the week runs (Setúbal on weekdays, then Lisboa) —
+// this is the order the site shows them in.
 export const LOCATIONS: readonly Location[] = [
-  { id: "lisboa", name: "Lisboa" },
   { id: "setubal", name: "Setúbal" },
+  { id: "lisboa", name: "Lisboa" },
 ] as const
 
 export interface WorkingHours {
@@ -98,6 +100,27 @@ export function weeklyHours(location: LocationId): WeekDayHours[] {
       hours: wh ? `${formatHour(wh.start)}⁠–⁠${formatHour(wh.end)}` : null,
     }
   })
+}
+
+/**
+ * Opening hours with consecutive same-hours days merged and closed days left
+ * out, e.g. Setúbal -> [{ days: "Seg–Ter", hours: "12h–20h" }, { days: "Qua", … }]
+ */
+export function groupedWeeklyHours(
+  location: LocationId,
+): { days: string; hours: string }[] {
+  const groups: { first: string; last: string; hours: string }[] = []
+  let prevHours: string | null = null
+  for (const d of weeklyHours(location)) {
+    const last = groups[groups.length - 1]
+    if (d.hours && d.hours === prevHours) last.last = d.day
+    else if (d.hours) groups.push({ first: d.day, last: d.day, hours: d.hours })
+    prevHours = d.hours
+  }
+  return groups.map((g) => ({
+    days: g.first === g.last ? g.first : `${g.first}–${g.last}`,
+    hours: g.hours,
+  }))
 }
 
 /** Open days as short text: "Seg–Sex", "Sex e Sáb", "Seg, Qua e Sex". */

@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { InstagramIcon } from "@/components/InstagramIcon"
 import { Wordmark } from "@/components/Wordmark"
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL, whatsappUrl } from "@/lib/site"
 
@@ -8,24 +9,23 @@ export function SiteFooter() {
   return (
     <footer className="bg-ink text-paper">
       <div className="h-1.5 bg-yellow" aria-hidden="true" />
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-[1fr_auto] sm:px-6">
-        <div>
-          <Wordmark tone="inverted" className="text-[1.9rem]" />
-          <p className="mt-4 max-w-sm text-sm text-paper/70">
-            Barbeiro independente. Setúbal durante a semana, Lisboa à sexta e
-            ao sábado.
-          </p>
-        </div>
+      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <Wordmark tone="inverted" className="text-[1.6rem]" />
 
-        <ul className="caps flex flex-col gap-2 text-[0.95rem] sm:items-end">
+        <ul className="caps flex flex-wrap items-center gap-x-6 gap-y-2 text-[0.95rem]">
           <li>
             <Link href="/marcar" className="hover:text-yellow">
               Marcar corte
             </Link>
           </li>
           <li>
-            <a href={INSTAGRAM_URL} target="_blank" rel="noopener" className="hover:text-yellow">
-              Instagram · @{INSTAGRAM_HANDLE}
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener"
+              className="inline-flex items-center gap-2 hover:text-yellow"
+            >
+              <InstagramIcon className="h-5 w-5" /> @{INSTAGRAM_HANDLE}
             </a>
           </li>
           {whatsapp && (
@@ -38,7 +38,7 @@ export function SiteFooter() {
         </ul>
       </div>
       <div className="border-t border-paper/15">
-        <p className="mx-auto max-w-6xl px-4 py-4 text-xs text-paper/50 sm:px-6">
+        <p className="mx-auto max-w-6xl px-4 py-3 text-xs text-paper/50 sm:px-6">
           {`© ${new Date().getFullYear()} Tarzan's Barbershop · Setúbal & Lisboa`}
         </p>
       </div>

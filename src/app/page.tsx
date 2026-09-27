@@ -1,15 +1,20 @@
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
+import { InstagramIcon } from "@/components/InstagramIcon"
 import { PriceBoard } from "@/components/PriceBoard"
 import { Wordmark } from "@/components/Wordmark"
-import { weeklyHours } from "@/lib/schedule"
+import { LOCATIONS, groupedWeeklyHours } from "@/lib/schedule"
 import { getServiceItem, formatPriceShort } from "@/lib/services"
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
+
+const TAGLINE = "Corte, barba e sobrancelha."
 
 export default function HomePage() {
   return (
     <>
       <Hero />
+      <InstagramBand />
       <PricesAndHowItWorks />
       <Timetable />
       <LoyaltyCard />
@@ -24,31 +29,38 @@ function Hero() {
   return (
     <section className="overflow-hidden">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:pt-20 md:pb-24">
-        <div>
-          <p className="caps text-sm text-muted">
-            ★ Barbeiro independente · Setúbal &amp; Lisboa
-          </p>
-          <h1 className="print-shadow mt-4 text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9]">
-            TARZAN&apos;S
+        {/* Everything is centred under the name. From md up the grid column
+            is exactly as wide as "TARZAN'S" (its min-content). */}
+        <div className="flex flex-col items-center text-center">
+          {/* "Barbershop" is sized in em so it scales with "TARZAN'S", and
+              the inline-flex column centres it under the name */}
+          <h1 className="inline-flex flex-col items-center text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9]">
+            <span className="print-shadow">TARZAN&apos;S</span>
+            <span className="font-script mt-[0.02em] -rotate-2 text-[0.66em] leading-none text-jungle">
+              Barbershop
+            </span>
           </h1>
-          <p className="font-script ml-[0.5em] -mt-1 -rotate-3 text-[clamp(2.4rem,6vw,3.9rem)] leading-none text-jungle">
-            Barbershop
-          </p>
 
-          <p className="font-display mt-9 text-2xl sm:text-3xl">
-            Corte, barba e sobrancelha.
-          </p>
+          <p className="font-display mt-9 text-2xl sm:text-3xl">{TAGLINE}</p>
           <p className="mt-4 max-w-md text-lg leading-relaxed text-ink/80">
             Em Setúbal durante a semana e em Lisboa à sexta e ao sábado.
-            Escolhe o serviço, o dia e a hora — marcar demora menos de um
-            minuto.
+            Escolhe o serviço, o dia e a hora. Faz a tua marcação em menos de
+            1&nbsp;minuto.
           </p>
 
-          <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
-            <Link href="/marcar" className="btn text-lg">
+          {/* Same width as the tagline (an invisible copy of it sizes this
+              column), centred under "Barbershop" */}
+          <div className="mt-9 grid w-max max-w-full justify-items-center">
+            <span
+              aria-hidden="true"
+              className="font-display invisible h-0 overflow-hidden whitespace-nowrap text-2xl sm:text-3xl"
+            >
+              {TAGLINE}
+            </span>
+            <Link href="/marcar" className="btn w-full text-lg">
               Marcar corte <ArrowRight className="h-5 w-5" />
             </Link>
-            <Link href="#precos" className="link font-semibold">
+            <Link href="#precos" className="link mt-4 font-semibold">
               Ver preços
             </Link>
           </div>
@@ -87,7 +99,7 @@ function Hero() {
 
 function PricesAndHowItWorks() {
   return (
-    <section id="precos" className="scroll-mt-20 border-t-2 border-ink">
+    <section id="precos" className="scroll-mt-20">
       <div className="mx-auto grid max-w-6xl gap-14 px-4 py-16 sm:px-6 md:grid-cols-[1.2fr_1fr] md:gap-16 md:py-24">
         <PriceBoard />
 
@@ -133,70 +145,76 @@ function HowStep({
   )
 }
 
-function Timetable() {
-  const setubal = weeklyHours("setubal")
-  const lisboa = weeklyHours("lisboa")
-
+// The site has no photos, so this is where people go to see the work.
+function InstagramBand() {
   return (
-    <section id="horario" className="scroll-mt-20 bg-jungle text-paper">
-      <div className="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 md:grid-cols-[1fr_1.15fr] md:gap-16 md:py-24">
-        <div>
-          <h2 className="print-shadow-ink text-4xl text-yellow sm:text-5xl">
-            Onde e quando
-          </h2>
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-paper/80">
-            Setúbal durante a semana, Lisboa à sexta e ao sábado. A localização
-            exata segue no email de confirmação.
-          </p>
-          <Link href="/marcar" className="btn mt-8">
-            Ver horários livres
-          </Link>
+    <section className="border-y-2 border-ink bg-yellow">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 px-4 py-8 text-center sm:px-6 md:flex-row md:justify-between md:py-7 md:text-left">
+        <div className="flex flex-col items-center gap-4 md:flex-row">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border-2 border-ink bg-paper shadow-[3px_3px_0_var(--ink)]">
+            <InstagramIcon className="h-7 w-7" />
+          </span>
+          <div>
+            <h2 className="text-2xl sm:text-3xl">Segue-nos no Instagram!</h2>
+            <p className="mt-1">
+              Vê os últimos cortes e novidades em{" "}
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener" className="font-bold underline underline-offset-4">
+                @{INSTAGRAM_HANDLE}
+              </a>
+              .
+            </p>
+          </div>
         </div>
-
-        <div className="rounded-lg border-2 border-paper/80 p-1.5">
-          <table className="w-full border-collapse rounded-md text-left tabular-nums">
-            <thead>
-              <tr className="caps border-b-2 border-paper/80 text-sm text-yellow">
-                <th className="px-4 py-3 font-bold" scope="col">Dia</th>
-                <th className="px-4 py-3 font-bold" scope="col">Setúbal</th>
-                <th className="px-4 py-3 font-bold" scope="col">Lisboa</th>
-              </tr>
-            </thead>
-            <tbody>
-              {setubal.map((d, i) => {
-                const l = lisboa[i]
-                const closed = !d.hours && !l.hours
-                return (
-                  <tr key={d.dow} className="border-b border-paper/15 last:border-b-0">
-                    <th scope="row" className="caps px-4 py-3 text-left font-bold">
-                      {d.day}
-                    </th>
-                    {closed ? (
-                      <td colSpan={2} className="px-4 py-3 italic text-paper/50">
-                        folga
-                      </td>
-                    ) : (
-                      <>
-                        <HoursCell hours={d.hours} />
-                        <HoursCell hours={l.hours} />
-                      </>
-                    )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <a
+          href={INSTAGRAM_URL}
+          target="_blank"
+          rel="noopener"
+          className="btn shrink-0 bg-ink text-yellow"
+        >
+          <InstagramIcon className="h-5 w-5" /> Visitar o Instagram
+        </a>
       </div>
     </section>
   )
 }
 
-function HoursCell({ hours }: { hours: string | null }) {
-  return hours ? (
-    <td className="px-4 py-3 text-lg font-semibold">{hours}</td>
-  ) : (
-    <td className="px-4 py-3 text-paper/30" aria-label="fechado">—</td>
+function Timetable() {
+  return (
+    <section id="horario" className="scroll-mt-20 bg-jungle text-paper">
+      <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1fr_1.15fr] md:gap-16 md:py-16">
+        <div>
+          <h2 className="print-shadow-ink text-4xl text-yellow sm:text-5xl">
+            Onde e quando
+          </h2>
+          <p className="mt-4 max-w-md text-lg leading-relaxed text-paper/80">
+            Setúbal durante a semana, Lisboa à sexta e ao sábado. A localização
+            exata segue no email de confirmação.
+          </p>
+          <Link href="/marcar" className="btn mt-6">
+            Ver horários livres
+          </Link>
+        </div>
+
+        {/* One compact card per city; days with the same hours are merged */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-5">
+          {LOCATIONS.map((loc) => (
+            <div key={loc.id} className="rounded-lg border-2 border-paper/70 p-3 sm:p-5">
+              <h3 className="border-b border-paper/30 pb-2 text-xl text-yellow sm:text-2xl">
+                {loc.name}
+              </h3>
+              <ul className="mt-2 space-y-1.5 tabular-nums">
+                {groupedWeeklyHours(loc.id).map((g) => (
+                  <li key={g.days} className="flex items-baseline justify-between gap-2">
+                    <span className="caps text-sm text-paper/70">{g.days}</span>
+                    <span className="font-semibold">{g.hours}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
 
