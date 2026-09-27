@@ -221,17 +221,23 @@ function Timetable() {
 function LoyaltyCard() {
   return (
     <section>
-      <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
-        <div>
-          <h2 className="text-4xl sm:text-5xl">O sexto corte é grátis</h2>
-          <p className="mt-5 max-w-md text-lg leading-relaxed text-ink/80">
-            Na primeira visita recebes o cartão de cliente. Cada corte vale um
-            carimbo — ao sexto, não pagas.
-          </p>
-          <p className="mt-3 text-sm text-muted">Válido apenas para o primeiro cartão.</p>
-        </div>
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
+        {/* Spans the full width and scales with the viewport so it always
+            fits on one line */}
+        <h2 className="whitespace-nowrap text-[clamp(1.4rem,7.6vw,3rem)]">
+          O sexto corte é grátis
+        </h2>
+        <div className="mt-6 grid items-start gap-12 md:grid-cols-2">
+          <div>
+            <p className="max-w-md text-lg leading-relaxed text-ink/80">
+              Na primeira visita recebes o cartão de cliente. Cada corte vale
+              um carimbo — ao sexto, não pagas.
+            </p>
+            <p className="mt-3 text-sm text-muted">Válido apenas para o primeiro cartão.</p>
+          </div>
 
-        <StampCard />
+          <StampCard />
+        </div>
       </div>
     </section>
   )

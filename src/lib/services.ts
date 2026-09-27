@@ -29,21 +29,21 @@ export const SERVICES: readonly ServiceItem[] = [
     name: "Barba",
     description: "Aparar e desenhar a barba.",
     priceEur: 5,
-    durationMin: 30,
+    durationMin: 10,
   },
   {
     id: "sobrancelha",
     name: "Sobrancelha",
     description: "Limpeza e definição.",
     priceEur: 5,
-    durationMin: 15,
+    durationMin: 5,
   },
   {
     id: "alinhamento",
     name: "Alinhamento",
     description: "Só contornos e acabamentos. Já vem incluído no corte.",
     priceEur: 5,
-    durationMin: 20,
+    durationMin: 10,
   },
 ] as const
 
@@ -51,9 +51,9 @@ export const SERVICES: readonly ServiceItem[] = [
 // alphabetically and joined by "+". Combos not listed here fall back to
 // the sum of individual items (no discount).
 const COMBO_OVERRIDES: Record<string, { priceEur: number; durationMin: number }> = {
-  "barba+corte": { priceEur: 12.5, durationMin: 60 },
+  "barba+corte": { priceEur: 12.5, durationMin: 55 },
   "corte+sobrancelha": { priceEur: 12.5, durationMin: 50 },
-  "barba+corte+sobrancelha": { priceEur: 15, durationMin: 75 },
+  "barba+corte+sobrancelha": { priceEur: 15, durationMin: 60 },
 }
 
 // Display order (for "Corte + Barba" instead of "Barba + Corte")
