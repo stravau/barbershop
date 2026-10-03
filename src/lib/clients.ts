@@ -9,6 +9,16 @@ import type { PrismaClient } from "../generated/prisma"
  */
 export const NO_PHONE_PREFIX = "sem-telefone-"
 
+/** Clients who always pay the same amount, whatever the service (by first name). */
+const FIXED_PRICE_BY_FIRST_NAME: Record<string, number> = {
+  arlindo: 20,
+}
+
+/** The fixed price for this client's bookings, or null to use the service price. */
+export function fixedPriceFor(name: string): number | null {
+  return FIXED_PRICE_BY_FIRST_NAME[normalizeName(name).split(" ")[0]] ?? null
+}
+
 export function hasPhone(phone: string): boolean {
   return /^\d+$/.test(phone)
 }

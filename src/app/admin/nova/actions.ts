@@ -9,7 +9,7 @@ import { buildCombo, validateSelection } from "@/lib/services"
 import { getWorkingHours, type LocationId } from "@/lib/schedule"
 import { combineDateTimeLisbon, getLisbonDayOfWeek } from "@/lib/tz"
 import { createEvent } from "@/lib/gcal"
-import { NO_PHONE_PREFIX, normalizePhone } from "@/lib/clients"
+import { NO_PHONE_PREFIX, fixedPriceFor, normalizePhone } from "@/lib/clients"
 
 export interface ManualBookingState {
   error?: string
@@ -77,7 +77,7 @@ export async function createManualBooking(
       email: email ?? client.email,
       serviceId: combo.key,
       serviceName: combo.name,
-      servicePrice: combo.priceEur,
+      servicePrice: fixedPriceFor(name) ?? combo.priceEur,
       durationMin: combo.durationMin,
       location,
       startUtc,
@@ -97,7 +97,7 @@ export async function createManualBooking(
           `Cliente: ${name}\n` +
           (phone ? `Telefone: ${phone}\n` : "") +
           (email ? `Email: ${email}\n` : "") +
-          `Serviço: ${combo.name} (${combo.durationMin}min — ${combo.priceEur}€)\n` +
+          `Serviço: ${combo.name} (${combo.durationMin}min — ${fixedPriceFor(name) ?? combo.priceEur}€)\n` +
           (notes ? `Notas: ${notes}\n` : "") +
           `\nMarcação registada no admin. ID: ${booking.id}`,
         location: location === "lisboa" ? "Lisboa" : "Setúbal",

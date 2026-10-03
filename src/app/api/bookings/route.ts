@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { buildCombo, validateSelection } from "@/lib/services"
 import { createEvent } from "@/lib/gcal"
 import { formatLisbon } from "@/lib/tz"
-import { normalizePhone } from "@/lib/clients"
+import { fixedPriceFor, normalizePhone } from "@/lib/clients"
 import {
   sendEmail,
   adminBookingEmail,
@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
 
   const combo = buildCombo(services)
+  // Some regulars always pay a fixed amount (see lib/clients.ts)
+  const price = fixedPriceFor(client.name) ?? combo.priceEur
 
   const startUtc = new Date(startUtcIso)
   const endUtc = addMinutes(startUtc, combo.durationMin)
@@ -91,7 +93,7 @@ export async function POST(req: NextRequest) {
       email: client.email,
       serviceId: combo.key,
       serviceName: combo.name,
-      servicePrice: combo.priceEur,
+      servicePrice: price,
       durationMin: combo.durationMin,
       location,
       startUtc,
@@ -113,7 +115,7 @@ export async function POST(req: NextRequest) {
       clientEmail: client.email,
       serviceName: combo.name,
       durationMin: combo.durationMin,
-      priceEur: combo.priceEur,
+      priceEur: price,
       location: locationPretty,
       whenLocal,
       startUtc,
@@ -136,7 +138,7 @@ export async function POST(req: NextRequest) {
       clientEmail: client.email,
       serviceName: combo.name,
       durationMin: combo.durationMin,
-      priceEur: combo.priceEur,
+      priceEur: price,
       location: locationPretty,
       whenLocal,
       startUtc,
@@ -158,7 +160,7 @@ export async function POST(req: NextRequest) {
         `Cliente: ${client.name}\n` +
         `Telefone: ${client.phone}\n` +
         `Email: ${client.email}\n` +
-        `Serviço: ${combo.name} (${combo.durationMin}min — ${combo.priceEur}€)\n` +
+        `Serviço: ${combo.name} (${combo.durationMin}min — ${price}€)\n` +
         (notes ? `Notas: ${notes}\n` : "") +
         `\nID: ${booking.id}`,
       location: locationPretty,
@@ -182,7 +184,7 @@ export async function POST(req: NextRequest) {
       clientToken: booking.clientToken,
       location,
       service: combo.name,
-      priceEur: combo.priceEur,
+      priceEur: price,
       whenLocal,
       startUtcIso: startUtc.toISOString(),
     },
