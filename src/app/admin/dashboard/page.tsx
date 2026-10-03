@@ -1,366 +1,225 @@
-import Link from "next/link"
-import {
-  Calendar,
-  Users,
-  TrendingUp,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  MapPin,
-  Award,
-  LogOut,
-  ArrowLeft,
-} from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { formatPrice } from "@/lib/services"
-import { formatLisbon } from "@/lib/tz"
+import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
+import type { Prisma } from "@/generated/prisma"
+import { AdminNav } from "../_components/AdminNav"
+import { SectionTitle, Stat } from "../_components/ui"
+import { BOOKED_STATUSES, cityName, groupBy } from "../_lib"
 
 export const dynamic = "force-dynamic"
 
-export default async function DashboardPage() {
+/**
+ * Numbers. "Faturado" only counts appointments that already happened;
+ * confirmed bookings still ahead are shown separately as "previsto".
+ * All periods follow Lisbon time.
+ */
+export default async function NumerosPage() {
   const now = new Date()
-
-  // Period boundaries (UTC anchors). Each period has an inclusive lower bound
-  // and exclusive upper bound so a booking scheduled inside one period stops
-  // bleeding into the wider ones (e.g., a booking next month no longer counts
-  // toward "Hoje", "Esta semana", AND "Este mês" at the same time).
-  const startOfDay = new Date(now)
-  startOfDay.setUTCHours(0, 0, 0, 0)
-  const endOfDay = new Date(startOfDay)
-  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1)
-
-  const startOfWeek = new Date(now)
-  startOfWeek.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7)) // Monday
-  startOfWeek.setUTCHours(0, 0, 0, 0)
-  const endOfWeek = new Date(startOfWeek)
-  endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7)
-
-  const startOfMonth = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-  )
-  const startOfNextMonth = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+  const p = lisbonPeriods(now)
+  const [y, m] = p.today.split("-").map(Number)
+  const sixMonthsAgo = combineDateTimeLisbon(
+    new Date(Date.UTC(y, m - 6, 1)).toISOString().slice(0, 10),
+    "00:00",
   )
 
-  const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1))
-  const startOfNextYear = new Date(
-    Date.UTC(now.getUTCFullYear() + 1, 0, 1),
-  )
-
-  const earningStatuses = { in: ["CONFIRMED", "COMPLETED"] }
+  const booked = { in: BOOKED_STATUSES }
+  // Already happened, within [from, min(to, now))
+  const doneIn = (from: Date, to?: Date): Prisma.BookingWhereInput => ({
+    status: booked,
+    startUtc: { gte: from, lt: to && to < now ? to : now },
+  })
+  // Confirmed and still ahead, within [now, to)
+  const aheadUntil = (to: Date): Prisma.BookingWhereInput => ({
+    status: booked,
+    startUtc: { gte: now, lt: to },
+  })
+  const sumOf = { _sum: { servicePrice: true }, _count: true } as const
 
   const [
-    todayRev,
-    weekRev,
-    monthRev,
-    yearRev,
-    allTimeRev,
-    statusCounts,
-    locationCounts,
-    serviceCounts,
-    totalClients,
-    topClients,
-    upcoming,
-    cancelledThisMonth,
+    today,
+    week,
+    month,
+    year,
+    allTime,
+    weekAhead,
+    monthAhead,
+    lastSixMonths,
+    byCity,
+    byService,
+    cancelledMonth,
+    bookedMonth,
+    clientsTotal,
+    clientsNew,
+    topClientIds,
   ] = await Promise.all([
-    prisma.booking.aggregate({
-      where: {
-        status: earningStatuses,
-        startUtc: { gte: startOfDay, lt: endOfDay },
-      },
-      _sum: { servicePrice: true },
-      _count: true,
-    }),
-    prisma.booking.aggregate({
-      where: {
-        status: earningStatuses,
-        startUtc: { gte: startOfWeek, lt: endOfWeek },
-      },
-      _sum: { servicePrice: true },
-      _count: true,
-    }),
-    prisma.booking.aggregate({
-      where: {
-        status: earningStatuses,
-        startUtc: { gte: startOfMonth, lt: startOfNextMonth },
-      },
-      _sum: { servicePrice: true },
-      _count: true,
-    }),
-    prisma.booking.aggregate({
-      where: {
-        status: earningStatuses,
-        startUtc: { gte: startOfYear, lt: startOfNextYear },
-      },
-      _sum: { servicePrice: true },
-      _count: true,
-    }),
-    prisma.booking.aggregate({
-      where: { status: earningStatuses },
-      _sum: { servicePrice: true },
-      _count: true,
-    }),
-    prisma.booking.groupBy({
-      by: ["status"],
-      _count: true,
-      _sum: { servicePrice: true },
+    prisma.booking.aggregate({ where: doneIn(p.dayStart, p.dayEnd), ...sumOf }),
+    prisma.booking.aggregate({ where: doneIn(p.weekStart, p.weekEnd), ...sumOf }),
+    prisma.booking.aggregate({ where: doneIn(p.monthStart, p.monthEnd), ...sumOf }),
+    prisma.booking.aggregate({ where: doneIn(p.yearStart, p.yearEnd), ...sumOf }),
+    prisma.booking.aggregate({ where: { status: booked, startUtc: { lt: now } }, ...sumOf }),
+    prisma.booking.aggregate({ where: aheadUntil(p.weekEnd), ...sumOf }),
+    prisma.booking.aggregate({ where: aheadUntil(p.monthEnd), ...sumOf }),
+    prisma.booking.findMany({
+      where: doneIn(sixMonthsAgo),
+      select: { startUtc: true, servicePrice: true },
+      orderBy: { startUtc: "asc" },
     }),
     prisma.booking.groupBy({
       by: ["location"],
-      where: { status: earningStatuses },
+      where: doneIn(p.yearStart, p.yearEnd),
       _count: true,
       _sum: { servicePrice: true },
     }),
     prisma.booking.groupBy({
       by: ["serviceName"],
-      where: { status: earningStatuses },
+      where: doneIn(p.yearStart, p.yearEnd),
       _count: true,
       _sum: { servicePrice: true },
       orderBy: { _count: { serviceName: "desc" } },
       take: 6,
     }),
-    prisma.client.count(),
-    prisma.client.findMany({
-      orderBy: { loyaltyCount: "desc" },
-      take: 5,
-      where: { loyaltyCount: { gt: 0 } },
-    }),
-    prisma.booking.findMany({
-      where: { status: "CONFIRMED", startUtc: { gte: now } },
-      include: { client: true },
-      orderBy: { startUtc: "asc" },
-      take: 5,
+    prisma.booking.count({
+      where: { status: "CANCELLED", startUtc: { gte: p.monthStart, lt: p.monthEnd } },
     }),
     prisma.booking.count({
-      where: {
-        status: "CANCELLED",
-        startUtc: { gte: startOfMonth, lt: startOfNextMonth },
-      },
+      where: { status: booked, startUtc: { gte: p.monthStart, lt: p.monthEnd } },
+    }),
+    prisma.client.count(),
+    prisma.client.count({ where: { createdAt: { gte: p.monthStart } } }),
+    prisma.booking.groupBy({
+      by: ["clientId"],
+      where: { status: booked, startUtc: { lt: now } },
+      _count: true,
+      orderBy: { _count: { clientId: "desc" } },
+      take: 5,
     }),
   ])
 
-  const countByStatus = Object.fromEntries(
-    statusCounts.map((c) => [c.status, c._count]),
-  )
+  const topClients = await prisma.client.findMany({
+    where: { id: { in: topClientIds.map((t) => t.clientId) } },
+    select: { id: true, name: true },
+  })
+  const nameById = new Map(topClients.map((c) => [c.id, c.name]))
 
-  const totalThisMonth = monthRev._count + cancelledThisMonth
-  const cancelRate =
-    totalThisMonth > 0
-      ? Math.round((cancelledThisMonth / totalThisMonth) * 100)
-      : 0
+  const months = [...groupBy(lastSixMonths, (b) => formatLisbon(b.startUtc, "yyyy-MM"))].map(
+    ([key, items]) => ({
+      key,
+      label: formatLisbon(items[0].startUtc, "MMMM"),
+      count: items.length,
+      total: items.reduce((s, b) => s + b.servicePrice, 0),
+    }),
+  )
+  const maxMonth = Math.max(1, ...months.map((mo) => mo.total))
+
+  const monthTotal = cancelledMonth + bookedMonth
+  const cancelRate = monthTotal > 0 ? Math.round((cancelledMonth / monthTotal) * 100) : 0
+  const money = (a: { _sum: { servicePrice: number | null } }) => formatPrice(a._sum.servicePrice ?? 0)
+  const cuts = (a: { _count: number }) => `${a._count} ${a._count === 1 ? "marcação" : "marcações"}`
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin"
-            className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Marcações
-          </Link>
-          <span className="text-muted">/</span>
-          <h1 className="font-display text-3xl tracking-[0.06em] text-accent">
-            DASHBOARD
-          </h1>
-        </div>
-        <a
-          href="/api/admin/auth/logout"
-          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink transition"
-        >
-          <LogOut className="h-4 w-4" /> Sair
-        </a>
-      </div>
+    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <AdminNav active="numeros" />
 
-      {/* Revenue by period */}
-      <section className="mb-8">
-        <h2 className="text-xs uppercase tracking-[0.18em] text-muted mb-3">
-          Faturação
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <RevenueCard
-            label="Hoje"
-            count={todayRev._count}
-            amount={todayRev._sum.servicePrice ?? 0}
-          />
-          <RevenueCard
+      <section className="mb-10">
+        <SectionTitle aside="Só marcações que já aconteceram">Faturado</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <Stat label="Hoje" value={money(today)} sub={cuts(today)} />
+          <Stat
             label="Esta semana"
-            count={weekRev._count}
-            amount={weekRev._sum.servicePrice ?? 0}
+            value={money(week)}
+            sub={<>{cuts(week)}<br />+ {money(weekAhead)} previsto</>}
           />
-          <RevenueCard
-            label="Este mês"
-            count={monthRev._count}
-            amount={monthRev._sum.servicePrice ?? 0}
+          <Stat
+            label={formatLisbon(now, "MMMM")}
+            value={money(month)}
+            sub={<>{cuts(month)}<br />+ {money(monthAhead)} previsto</>}
             highlight
           />
-          <RevenueCard
-            label="Este ano"
-            count={yearRev._count}
-            amount={yearRev._sum.servicePrice ?? 0}
-          />
-          <RevenueCard
-            label="Total"
-            count={allTimeRev._count}
-            amount={allTimeRev._sum.servicePrice ?? 0}
-          />
+          <Stat label={`Ano ${y}`} value={money(year)} sub={cuts(year)} />
+          <Stat label="Desde sempre" value={money(allTime)} sub={cuts(allTime)} />
         </div>
-        <p className="text-xs text-muted mt-2">
-          Inclui marcações <strong className="text-foreground">Confirmadas</strong> e{" "}
-          <strong className="text-foreground">Concluídas</strong>. Pendentes não
-          contam.
-        </p>
       </section>
 
-      {/* Status breakdown */}
-      <section className="mb-8">
-        <h2 className="text-xs uppercase tracking-[0.18em] text-muted mb-3">
-          Estado das marcações
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatusCard
-            icon={<Clock className="h-4 w-4" />}
-            label="Pendentes"
-            count={countByStatus["PENDING"] ?? 0}
-            tone="gold"
-          />
-          <StatusCard
-            icon={<CheckCircle2 className="h-4 w-4" />}
-            label="Confirmadas"
-            count={countByStatus["CONFIRMED"] ?? 0}
-            tone="success"
-          />
-          <StatusCard
-            icon={<Award className="h-4 w-4" />}
-            label="Concluídas"
-            count={countByStatus["COMPLETED"] ?? 0}
-            tone="success"
-          />
-          <StatusCard
-            icon={<XCircle className="h-4 w-4" />}
-            label="Canceladas"
-            count={countByStatus["CANCELLED"] ?? 0}
-            tone="danger"
-          />
-        </div>
-        <p className="text-xs text-muted mt-2">
-          Taxa de cancelamento (mês corrente):{" "}
-          <strong className="text-foreground">{cancelRate}%</strong>
-        </p>
+      <section className="mb-10">
+        <SectionTitle>Últimos meses</SectionTitle>
+        {months.length === 0 ? (
+          <p className="text-muted">Ainda sem dados.</p>
+        ) : (
+          <ul className="space-y-2">
+            {months.map((mo) => (
+              <li key={mo.key} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-3">
+                <span className="caps text-sm">{mo.label}</span>
+                <span className="h-6 rounded border-2 border-ink/15 bg-card">
+                  <span
+                    className="block h-full rounded-sm bg-yellow"
+                    style={{ width: `${(mo.total / maxMonth) * 100}%` }}
+                  />
+                </span>
+                <span className="w-36 text-right text-sm tabular-nums">
+                  <strong>{formatPrice(mo.total)}</strong>{" "}
+                  <span className="text-muted">· {mo.count}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Por localização */}
+      <div className="grid gap-x-10 gap-y-10 md:grid-cols-2">
         <section>
-          <h2 className="text-xs uppercase tracking-[0.18em] text-muted mb-3">
-            Por localização
-          </h2>
-          <div className="rounded-lg border border-border bg-background-elevated p-4 space-y-3">
-            {locationCounts.length === 0 ? (
-              <p className="text-sm text-muted">Sem dados.</p>
-            ) : (
-              locationCounts.map((row) => (
-                <div key={row.location} className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2 text-foreground">
-                    <MapPin className="h-4 w-4 text-accent" />
-                    {row.location === "lisboa" ? "Lisboa" : "Setúbal"}
-                  </span>
-                  <span className="text-sm">
-                    <span className="text-foreground">{row._count}</span>
-                    <span className="text-muted">
-                      {" "}· {formatPrice(row._sum.servicePrice ?? 0)}
-                    </span>
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
+          <SectionTitle aside={`Ano ${y}`}>Por cidade</SectionTitle>
+          <Table
+            rows={byCity.map((r) => ({
+              label: cityName(r.location),
+              count: r._count,
+              total: r._sum.servicePrice ?? 0,
+            }))}
+          />
         </section>
 
-        {/* Por serviço */}
         <section>
-          <h2 className="text-xs uppercase tracking-[0.18em] text-muted mb-3">
-            Top serviços
-          </h2>
-          <div className="rounded-lg border border-border bg-background-elevated p-4 space-y-3">
-            {serviceCounts.length === 0 ? (
-              <p className="text-sm text-muted">Sem dados.</p>
-            ) : (
-              serviceCounts.map((row) => (
-                <div key={row.serviceName} className="flex items-center justify-between">
-                  <span className="text-foreground">{row.serviceName}</span>
-                  <span className="text-sm">
-                    <span className="text-foreground">{row._count}</span>
-                    <span className="text-muted">
-                      {" "}· {formatPrice(row._sum.servicePrice ?? 0)}
-                    </span>
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
+          <SectionTitle aside={`Ano ${y}`}>Serviços mais pedidos</SectionTitle>
+          <Table
+            rows={byService.map((r) => ({
+              label: r.serviceName,
+              count: r._count,
+              total: r._sum.servicePrice ?? 0,
+            }))}
+          />
         </section>
 
-        {/* Top clientes */}
         <section>
-          <h2 className="text-xs uppercase tracking-[0.18em] text-muted mb-3">
-            Clientes fiéis
-          </h2>
-          <div className="rounded-lg border border-border bg-background-elevated p-4 space-y-3">
-            <div className="flex items-center justify-between text-sm pb-2 border-b border-border">
-              <span className="inline-flex items-center gap-2 text-muted">
-                <Users className="h-4 w-4" />
-                Clientes registados
-              </span>
-              <strong className="text-foreground">{totalClients}</strong>
-            </div>
-            {topClients.length === 0 ? (
-              <p className="text-sm text-muted">Sem clientes com cortes ainda.</p>
-            ) : (
-              topClients.map((c) => (
-                <div key={c.id} className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">{c.name}</span>
-                  <span className="inline-flex items-center gap-1 text-accent">
-                    <Award className="h-3 w-3" />
-                    {c.loyaltyCount}
+          <SectionTitle aside={`${clientsTotal} no total · ${clientsNew} novos este mês`}>
+            Clientes mais fiéis
+          </SectionTitle>
+          {topClientIds.length === 0 ? (
+            <p className="text-muted">Ainda sem visitas.</p>
+          ) : (
+            <ol className="divide-y divide-ink/10 border-y-2 border-ink">
+              {topClientIds.map((t, i) => (
+                <li key={t.clientId} className="flex items-center justify-between py-2">
+                  <span>
+                    <span className="mr-2 text-muted tabular-nums">{i + 1}.</span>
+                    {nameById.get(t.clientId) ?? "—"}
                   </span>
-                </div>
-              ))
-            )}
-          </div>
+                  <span className="tabular-nums">
+                    {t._count} {t._count === 1 ? "visita" : "visitas"}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
 
-        {/* Próximas marcações */}
         <section>
-          <h2 className="text-xs uppercase tracking-[0.18em] text-muted mb-3">
-            Próximas marcações confirmadas
-          </h2>
-          <div className="rounded-lg border border-border bg-background-elevated p-4 space-y-3">
-            {upcoming.length === 0 ? (
-              <p className="text-sm text-muted">Não há marcações futuras confirmadas.</p>
-            ) : (
-              upcoming.map((b) => (
-                <Link
-                  key={b.id}
-                  href={`/admin/booking/${b.id}?token=${b.adminToken}`}
-                  className="block hover:opacity-90 transition"
-                >
-                  <div className="flex items-start justify-between gap-2 text-sm">
-                    <div>
-                      <div className="text-foreground">{b.client.name}</div>
-                      <div className="text-muted text-xs">
-                        {b.serviceName} ·{" "}
-                        {b.location === "lisboa" ? "Lisboa" : "Setúbal"}
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted whitespace-nowrap">
-                      {formatLisbon(b.startUtc, "EEE dd/MM HH:mm")}
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
+          <SectionTitle aside={formatLisbon(now, "MMMM")}>Cancelamentos</SectionTitle>
+          <div className="grid grid-cols-2 gap-3">
+            <Stat label="Taxa" value={`${cancelRate}%`} />
+            <Stat
+              label="Canceladas"
+              value={String(cancelledMonth)}
+              sub={`de ${monthTotal} marcações`}
+            />
           </div>
         </section>
       </div>
@@ -368,67 +227,19 @@ export default async function DashboardPage() {
   )
 }
 
-function RevenueCard({
-  label,
-  count,
-  amount,
-  highlight,
-}: {
-  label: string
-  count: number
-  amount: number
-  highlight?: boolean
-}) {
+function Table({ rows }: { rows: { label: string; count: number; total: number }[] }) {
+  if (rows.length === 0) return <p className="text-muted">Ainda sem dados.</p>
   return (
-    <div
-      className={
-        "rounded-lg border p-4 " +
-        (highlight
-          ? "border-ink/40 bg-yellow/20"
-          : "border-border bg-background-elevated")
-      }
-    >
-      <div className="text-xs uppercase tracking-[0.12em] text-muted">{label}</div>
-      <div
-        className={
-          "mt-1 font-display text-2xl tracking-wider " +
-          (highlight ? "text-accent" : "text-foreground")
-        }
-      >
-        {formatPrice(amount)}
-      </div>
-      <div className="text-xs text-muted mt-0.5 inline-flex items-center gap-1">
-        <Calendar className="h-3 w-3" />
-        {count} marcações
-      </div>
-    </div>
-  )
-}
-
-function StatusCard({
-  icon,
-  label,
-  count,
-  tone,
-}: {
-  icon: React.ReactNode
-  label: string
-  count: number
-  tone: "gold" | "success" | "danger"
-}) {
-  const cls =
-    tone === "gold"
-      ? "border-ink/30 bg-yellow/20 text-accent"
-      : tone === "success"
-        ? "border-success/30 bg-success/5 text-success"
-        : "border-danger/30 bg-danger/5 text-danger"
-  return (
-    <div className={`rounded-lg border p-4 ${cls}`}>
-      <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] opacity-80">
-        {icon}
-        {label}
-      </div>
-      <div className="font-display text-3xl tracking-wider mt-2">{count}</div>
-    </div>
+    <ul className="divide-y divide-ink/10 border-y-2 border-ink">
+      {rows.map((r) => (
+        <li key={r.label} className="flex items-center justify-between gap-3 py-2">
+          <span>{r.label}</span>
+          <span className="tabular-nums">
+            <strong>{formatPrice(r.total)}</strong>{" "}
+            <span className="text-muted">· {r.count}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }

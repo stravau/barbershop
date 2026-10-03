@@ -1,477 +1,398 @@
 import Link from "next/link"
-import {
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Award,
-  LogOut,
-  MapPin,
-  AlertCircle,
-  BarChart3,
-} from "lucide-react"
 import { prisma } from "@/lib/prisma"
-import { formatLisbon } from "@/lib/tz"
+import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
-import type { Prisma } from "@/generated/prisma"
-import { DeleteCancelledButton } from "./_components/DeleteCancelledButton"
+import { LOCATIONS, isLocationOpenOn, ymdDayOfWeek, ymdPlusDays } from "@/lib/schedule"
+import { cn } from "@/lib/utils"
+import { AdminNav } from "./_components/AdminNav"
+import { ContactLinks } from "./_components/ContactLinks"
+import { MonthCalendar, monthGrid } from "./_components/MonthCalendar"
+import { CityTag, FilterChips, SectionTitle, Stat, StatusPill } from "./_components/ui"
+import {
+  BOOKED_STATUSES,
+  bookingHref,
+  groupBy,
+  parseCity,
+  relativeDay,
+  type BookingWithClient,
+} from "./_lib"
 
 export const dynamic = "force-dynamic"
 
-const STATUSES = ["ALL", "PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"] as const
-type StatusFilter = (typeof STATUSES)[number]
-
-const RANGES = ["upcoming", "today", "week", "all"] as const
-type RangeFilter = (typeof RANGES)[number]
+/** Confirmed bookings listed under "Próximas marcações" (pending ones are all shown). */
+const UPCOMING_CONFIRMED = 10
+/** …of which this many are shown on phones. */
+const UPCOMING_ON_PHONES = 4
 
 interface PageProps {
   searchParams: Promise<{
-    status?: string
-    range?: string
-    location?: string
+    cidade?: string
+    mes?: string
+    dia?: string
     flash?: string
     code?: string
   }>
 }
 
-export default async function AdminDashboardPage({ searchParams }: PageProps) {
+/**
+ * Admin landing page: requests waiting for a decision first, then a month
+ * calendar of the agenda with the selected day's full list beside it.
+ */
+export default async function AgendaPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const status = (sp.status as StatusFilter) ?? "PENDING"
-  const range = (sp.range as RangeFilter) ?? "upcoming"
-  const location = sp.location
-  const flash = sp.flash
-  const flashCode = sp.code
-
-  const where: Prisma.BookingWhereInput = {}
-  if (status !== "ALL") where.status = status
-  if (location === "lisboa" || location === "setubal") where.location = location
-
+  const city = parseCity(sp.cidade)
+  const byCity = city ? { location: city } : {}
   const now = new Date()
-  if (range === "upcoming") {
-    where.startUtc = { gte: now }
-  } else if (range === "today") {
-    const start = new Date(now)
-    start.setUTCHours(0, 0, 0, 0)
-    const end = new Date(start)
-    end.setUTCDate(end.getUTCDate() + 1)
-    where.startUtc = { gte: start, lt: end }
-  } else if (range === "week") {
-    const end = new Date(now)
-    end.setUTCDate(end.getUTCDate() + 7)
-    where.startUtc = { gte: now, lt: end }
-  }
+  const p = lisbonPeriods(now)
 
-  // COMPLETED gets descending order (most recent first) and is rendered grouped
-  // by month. Everything else stays ascending (next-up first).
-  const bookings = await prisma.booking.findMany({
-    where,
-    include: { client: true },
-    orderBy: { startUtc: status === "COMPLETED" ? "desc" : "asc" },
-    take: 200,
-  })
+  // Calendar month (?mes=YYYY-MM) and selected day (?dia=YYYY-MM-DD)
+  const month = /^\d{4}-\d{2}$/.test(sp.mes ?? "") ? sp.mes! : p.today.slice(0, 7)
+  const grid = monthGrid(month).days
+  const gridFrom = combineDateTimeLisbon(grid[0], "00:00")
+  const gridTo = combineDateTimeLisbon(ymdPlusDays(grid[grid.length - 1], 1), "00:00")
 
-  const counts = await prisma.booking.groupBy({
-    by: ["status"],
-    _count: true,
-  })
-  const countByStatus = Object.fromEntries(
-    counts.map((c) => [c.status, c._count]),
+  const [pending, nextConfirmed, monthBookings, today, week] = await Promise.all([
+    prisma.booking.findMany({
+      where: { status: "PENDING", ...byCity },
+      include: { client: true },
+      orderBy: { startUtc: "asc" },
+    }),
+    prisma.booking.findMany({
+      where: { status: { in: BOOKED_STATUSES }, startUtc: { gte: now }, ...byCity },
+      include: { client: true },
+      orderBy: { startUtc: "asc" },
+      take: UPCOMING_CONFIRMED,
+    }),
+    prisma.booking.findMany({
+      where: {
+        status: { in: [...BOOKED_STATUSES, "PENDING"] },
+        startUtc: { gte: gridFrom, lt: gridTo },
+        ...byCity,
+      },
+      include: { client: true },
+      orderBy: { startUtc: "asc" },
+    }),
+    prisma.booking.aggregate({
+      where: { status: { in: BOOKED_STATUSES }, startUtc: { gte: p.dayStart, lt: p.dayEnd }, ...byCity },
+      _sum: { servicePrice: true },
+      _count: true,
+    }),
+    prisma.booking.aggregate({
+      where: {
+        status: { in: BOOKED_STATUSES },
+        startUtc: { gte: p.weekStart, lt: p.weekEnd },
+        ...byCity,
+      },
+      _sum: { servicePrice: true },
+      _count: true,
+    }),
+  ])
+
+  const byDay = groupBy(monthBookings, (b) => formatLisbon(b.startUtc, "yyyy-MM-dd"))
+  // Default day: today in the current month, otherwise the month's first busy day
+  const selected =
+    sp.dia && /^\d{4}-\d{2}-\d{2}$/.test(sp.dia) && grid.includes(sp.dia)
+      ? sp.dia
+      : month === p.today.slice(0, 7)
+        ? p.today
+        : (grid.find((d) => d.startsWith(month) && byDay.has(d)) ?? `${month}-01`)
+  const dayItems = byDay.get(selected) ?? []
+  const cities = city ? [city] : LOCATIONS.map((l) => l.id)
+  // Every pending request (they need an answer) plus the next confirmed ones
+  const upcoming = [...pending, ...nextConfirmed].sort(
+    (a, b) => a.startUtc.getTime() - b.startUtc.getTime(),
   )
 
+  const href = (params: { city?: string; month?: string; day?: string }) => {
+    const q = new URLSearchParams()
+    if (params.city) q.set("cidade", params.city)
+    if (params.month && params.month !== p.today.slice(0, 7)) q.set("mes", params.month)
+    if (params.day) q.set("dia", params.day)
+    const qs = q.toString()
+    return `/admin${qs ? `?${qs}` : ""}`
+  }
+  // City filter keeps the month/day being looked at
+  const cityHref = (c?: string) => href({ city: c, month, day: selected })
+
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="font-display text-3xl tracking-[0.06em] text-accent">
-          ADMIN
-        </h1>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/admin/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm text-foreground/80 hover:text-ink transition"
-          >
-            <BarChart3 className="h-4 w-4" /> Dashboard
-          </Link>
-          <a
-            href="/api/admin/auth/logout"
-            className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink transition"
-          >
-            <LogOut className="h-4 w-4" /> Sair
-          </a>
-        </div>
+    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <AdminNav active="agenda" />
+
+      {sp.flash && <FlashBanner flash={sp.flash} code={sp.code} />}
+
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        <Stat
+          label="Hoje"
+          value={String(today._count)}
+          sub={`marcações · ${formatPrice(today._sum.servicePrice ?? 0)}`}
+        />
+        <Stat
+          label="Esta semana"
+          value={String(week._count)}
+          sub={`marcações · ${formatPrice(week._sum.servicePrice ?? 0)}`}
+        />
+        <Stat
+          label="Por confirmar"
+          value={String(pending.length)}
+          sub={pending.length > 0 ? "à espera de resposta" : "tudo respondido"}
+          highlight={pending.length > 0}
+        />
       </div>
 
-      {/* Flash banner from confirm/reject actions */}
-      {flash && <FlashBanner flash={flash} code={flashCode} />}
-
-      {/* Filters */}
-      <div className="rounded-lg border border-border bg-background-elevated p-4 mb-6">
-        <div className="flex flex-wrap gap-4">
-          <FilterGroup label="Estado">
-            {STATUSES.map((s) => (
-              <FilterChip
-                key={s}
-                href={searchUrl({ status: s, range, location })}
-                active={status === s}
-                badge={s !== "ALL" ? countByStatus[s] : undefined}
-              >
-                {labelStatus(s)}
-              </FilterChip>
-            ))}
-          </FilterGroup>
-
-          <FilterGroup label="Período">
-            {RANGES.map((r) => (
-              <FilterChip
-                key={r}
-                href={searchUrl({ status, range: r, location })}
-                active={range === r}
-              >
-                {labelRange(r)}
-              </FilterChip>
-            ))}
-          </FilterGroup>
-
-          <FilterGroup label="Localização">
-            <FilterChip
-              href={searchUrl({ status, range })}
-              active={!location}
-            >
-              Todas
-            </FilterChip>
-            <FilterChip
-              href={searchUrl({ status, range, location: "lisboa" })}
-              active={location === "lisboa"}
-            >
-              Lisboa
-            </FilterChip>
-            <FilterChip
-              href={searchUrl({ status, range, location: "setubal" })}
-              active={location === "setubal"}
-            >
-              Setúbal
-            </FilterChip>
-          </FilterGroup>
-        </div>
+      <div className="mb-8">
+        <FilterChips
+          options={[
+            { href: cityHref(), label: "Todas as cidades", active: !city },
+            { href: cityHref("setubal"), label: "Setúbal", active: city === "setubal" },
+            { href: cityHref("lisboa"), label: "Lisboa", active: city === "lisboa" },
+          ]}
+        />
       </div>
 
-      {/* Bulk delete: only when filter = CANCELLED */}
-      {status === "CANCELLED" && (
-        <div className="mb-4 flex justify-end">
-          <DeleteCancelledButton count={countByStatus["CANCELLED"] ?? 0} />
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+        {/* Left: calendar, with the selected day's bookings underneath */}
+        <div>
+          <MonthCalendar
+            month={month}
+            byDay={byDay}
+            today={p.today}
+            selected={selected}
+            cities={cities}
+            hrefFor={({ month: m, day }) => href({ city, month: m, day })}
+          />
+          <DayPanel
+            day={selected}
+            items={dayItems}
+            today={p.today}
+            now={now}
+            showCity={!city}
+            open={cities.some((c) => isLocationOpenOn(c, ymdDayOfWeek(selected)))}
+          />
         </div>
-      )}
 
-      {/* Bookings list */}
-      {bookings.length === 0 ? (
-        <div className="rounded-lg border border-border bg-background-elevated p-10 text-center">
-          <AlertCircle className="h-8 w-8 text-muted mx-auto mb-3" />
-          <p className="text-muted">Nenhuma marcação corresponde aos filtros.</p>
-        </div>
-      ) : status === "COMPLETED" ? (
-        <CompletedByMonth bookings={bookings} />
-      ) : (
-        <div className="space-y-2">
-          {bookings.map((b) => (
-            <BookingCard key={b.id} b={b} />
-          ))}
-        </div>
-      )}
+        {/* Right: what's coming up; first on phones so requests are seen */}
+        <section className="order-first lg:order-none">
+          <SectionTitle
+            aside={pending.length > 0 ? `${pending.length} por confirmar` : undefined}
+          >
+            Próximas marcações
+          </SectionTitle>
+          {upcoming.length === 0 ? (
+            <p className="py-6 text-center text-muted">Sem marcações à frente.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {upcoming.map((b) => {
+                // On phones keep the list short (the calendar sits below it):
+                // every request, but only the next few confirmed bookings
+                const confirmedBefore = upcoming
+                  .slice(0, upcoming.indexOf(b))
+                  .filter((x) => x.status !== "PENDING").length
+                const phoneHidden = b.status !== "PENDING" && confirmedBefore >= UPCOMING_ON_PHONES
+                return (
+                  <UpcomingItem
+                    key={b.id}
+                    b={b}
+                    now={now}
+                    today={p.today}
+                    showCity={!city}
+                    className={phoneHidden ? "hidden lg:block" : undefined}
+                  />
+                )
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
     </main>
   )
 }
 
-type BookingWithClient = Prisma.BookingGetPayload<{ include: { client: true } }>
-
-function BookingCard({ b }: { b: BookingWithClient }) {
-  return (
-    <div className="rounded-lg border border-border bg-background-elevated p-4">
-      <Link
-        href={`/admin/booking/${b.id}?token=${b.adminToken}`}
-        className="block hover:opacity-95 transition"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <StatusPill status={b.status} />
-              <span className="font-display text-lg tracking-wider text-accent">
-                {b.serviceName}
-              </span>
-              <span className="text-muted text-sm">·</span>
-              <span className="inline-flex items-center gap-1 text-sm text-muted">
-                <MapPin className="h-3.5 w-3.5" />
-                {b.location === "lisboa" ? "Lisboa" : "Setúbal"}
-              </span>
-            </div>
-            <div className="mt-1 text-sm">
-              <span className="text-foreground">
-                {formatLisbon(b.startUtc, "EEE, dd/MM/yyyy 'às' HH:mm")}
-              </span>
-              <span className="text-muted">
-                {" "}· {b.durationMin} min · {formatPrice(b.servicePrice)}
-              </span>
-            </div>
-            <div className="mt-1 text-sm text-muted">
-              {b.client.name} · +{b.client.phone}
-              {b.email && <> · {b.email}</>}
-            </div>
-          </div>
-          <div className="text-xs text-muted whitespace-nowrap">
-            {b.client.loyaltyCount > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <Award className="h-3 w-3 text-accent" />
-                {b.client.loyaltyCount} cortes
-              </span>
-            )}
-          </div>
-        </div>
-      </Link>
-
-      {b.status === "PENDING" && (
-        <div className="mt-3 pt-3 border-t border-border flex gap-2">
-          <a
-            href={`/api/admin/bookings/${b.id}/confirm?token=${b.adminToken}&from=admin`}
-            className="flex-1 rounded-md bg-success px-4 py-2 font-semibold text-paper text-center text-sm hover:brightness-110 transition"
-          >
-            ✓ Confirmar
-          </a>
-          <a
-            href={`/api/admin/bookings/${b.id}/reject?token=${b.adminToken}&from=admin`}
-            className="flex-1 rounded-md bg-danger px-4 py-2 font-semibold text-white text-center text-sm hover:brightness-110 transition"
-          >
-            ✗ Cancelar
-          </a>
-        </div>
-      )}
-
-      {b.status === "CONFIRMED" && (
-        <div className="mt-3 pt-3 border-t border-border">
-          <a
-            href={`/api/admin/bookings/${b.id}/reject?token=${b.adminToken}&from=admin`}
-            className="block w-full rounded-md border border-danger/40 bg-danger/5 px-4 py-2 font-semibold text-danger text-center text-sm hover:bg-danger/10 transition"
-          >
-            ✗ Cancelar marcação
-          </a>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CompletedByMonth({ bookings }: { bookings: BookingWithClient[] }) {
-  // Group by Lisbon-local YYYY-MM, preserving the desc order from the query.
-  const groups = new Map<string, BookingWithClient[]>()
-  for (const b of bookings) {
-    const key = formatLisbon(b.startUtc, "yyyy-MM")
-    const arr = groups.get(key) ?? []
-    arr.push(b)
-    groups.set(key, arr)
-  }
-
-  return (
-    <div className="space-y-8">
-      {Array.from(groups.entries()).map(([monthKey, items]) => {
-        const totalRevenue = items.reduce((s, b) => s + b.servicePrice, 0)
-        const monthLabel = formatLisbon(
-          items[0].startUtc,
-          "MMMM 'de' yyyy",
-        ).toUpperCase()
-        return (
-          <div key={monthKey}>
-            <div className="mb-3 flex items-end justify-between gap-3 border-b border-border pb-2">
-              <h2 className="font-display text-xl tracking-[0.1em] text-accent">
-                {monthLabel}
-              </h2>
-              <div className="text-xs text-muted">
-                {items.length} marcações ·{" "}
-                <span className="text-foreground">
-                  {formatPrice(totalRevenue)}
-                </span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {items.map((b) => (
-                <BookingCard key={b.id} b={b} />
-              ))}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function searchUrl(params: {
-  status?: StatusFilter
-  range?: RangeFilter
-  location?: string
-}): string {
-  const sp = new URLSearchParams()
-  if (params.status && params.status !== "PENDING") sp.set("status", params.status)
-  if (params.range && params.range !== "upcoming") sp.set("range", params.range)
-  if (params.location) sp.set("location", params.location)
-  const q = sp.toString()
-  return `/admin${q ? `?${q}` : ""}`
-}
-
-function labelStatus(s: StatusFilter): string {
-  switch (s) {
-    case "ALL":
-      return "Todas"
-    case "PENDING":
-      return "Pendentes"
-    case "CONFIRMED":
-      return "Confirmadas"
-    case "CANCELLED":
-      return "Canceladas"
-    case "COMPLETED":
-      return "Concluídas"
-  }
-}
-
-function labelRange(r: RangeFilter): string {
-  switch (r) {
-    case "upcoming":
-      return "Próximas"
-    case "today":
-      return "Hoje"
-    case "week":
-      return "7 dias"
-    case "all":
-      return "Tudo"
-  }
-}
-
-function FilterGroup({
-  label,
-  children,
+/** Full list for the day picked in the calendar. */
+function DayPanel({
+  day,
+  items,
+  today,
+  now,
+  showCity,
+  open,
 }: {
-  label: string
-  children: React.ReactNode
+  day: string
+  items: BookingWithClient[]
+  today: string
+  now: Date
+  showCity: boolean
+  open: boolean
 }) {
+  const noon = new Date(`${day}T12:00:00Z`)
+  const rel = relativeDay(noon, today)
+  const booked = items.filter((b) => b.status !== "PENDING")
   return (
-    <div>
-      <div className="text-xs uppercase tracking-[0.15em] text-muted mb-1.5">
-        {label}
+    <div className="mt-8">
+      <div className="border-b-2 border-ink pb-1.5">
+        <h3 className="text-xl">
+          {rel && (
+            <span className="caps mr-2 rounded bg-yellow px-1.5 py-0.5 align-middle text-xs ring-1 ring-ink">
+              {rel}
+            </span>
+          )}
+          {formatLisbon(noon, "EEEE, d 'de' MMMM")}
+        </h3>
+        {items.length > 0 && (
+          <p className="mt-0.5 text-sm text-muted">
+            {booked.length} {booked.length === 1 ? "marcação" : "marcações"} ·{" "}
+            {formatPrice(sum(booked))}
+            {items.length > booked.length && <> · {items.length - booked.length} por confirmar</>}
+          </p>
+        )}
       </div>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
+      {items.length === 0 ? (
+        <p className="py-6 text-center text-muted">
+          {open ? "Sem marcações neste dia." : "Dia sem atendimento."}
+        </p>
+      ) : (
+        <ul className="divide-y divide-ink/10">
+          {items.map((b) => (
+            <DayRow key={b.id} b={b} now={now} showCity={showCity} />
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
 
-function FilterChip({
-  href,
-  active,
-  badge,
-  children,
+function sum(bookings: { servicePrice: number }[]): number {
+  return bookings.reduce((s, b) => s + b.servicePrice, 0)
+}
+
+/** One entry of "Próximas marcações"; pending requests get the actions. */
+function UpcomingItem({
+  b,
+  now,
+  today,
+  showCity,
+  className,
 }: {
-  href: string
-  active: boolean
-  badge?: number | string
-  children: React.ReactNode
+  b: BookingWithClient
+  now: Date
+  today: string
+  showCity: boolean
+  className?: string
 }) {
+  const pending = b.status === "PENDING"
+  const past = b.startUtc < now
+  const day = relativeDay(b.startUtc, today) ?? formatLisbon(b.startUtc, "EEE, d MMM")
+  const action = (kind: "confirm" | "reject") =>
+    `/api/admin/bookings/${b.id}/${kind}?token=${b.adminToken}&from=admin`
+
   return (
-    <Link
-      href={href}
-      className={
-        active
-          ? "rounded-full bg-yellow text-ink px-3 py-1 text-xs font-semibold inline-flex items-center gap-1.5"
-          : "rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground/80 hover:border-ink hover:text-ink transition inline-flex items-center gap-1.5"
-      }
-    >
-      {children}
-      {badge !== undefined && badge !== 0 && (
-        <span
-          className={
-            active
-              ? "rounded-full bg-ink/15 px-1.5 py-0.5 text-[10px]"
-              : "rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px]"
-          }
-        >
-          {badge}
-        </span>
+    <li
+      className={cn(
+        "rounded-lg border-2 p-3",
+        pending ? "border-ink bg-yellow/25 shadow-[3px_3px_0_var(--ink)]" : "border-ink/15 bg-card",
+        className,
       )}
-    </Link>
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-semibold">
+          {day} · <span className="tabular-nums">{formatLisbon(b.startUtc, "HH:mm")}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          {showCity && <CityTag location={b.location} />}
+          <span className="text-sm tabular-nums">{formatPrice(b.servicePrice)}</span>
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <Link href={bookingHref(b)} className="min-w-0 truncate hover:underline">
+          <span className="font-semibold">{b.client.name}</span>
+          <span className="text-muted"> · {b.serviceName}</span>
+        </Link>
+        {!pending && <ContactLinks phone={b.client.phone} />}
+      </div>
+      {b.notes && <p className="truncate text-sm italic text-muted">“{b.notes}”</p>}
+      {pending && (
+        <>
+          {past && (
+            <p className="mt-1 text-sm font-semibold text-danger">
+              A hora já passou sem resposta.
+            </p>
+          )}
+          <div className="mt-2 flex items-center gap-2">
+            {!past && (
+              <a href={action("confirm")} className="btn btn-sm bg-success text-paper">
+                Confirmar
+              </a>
+            )}
+            <a
+              href={action("reject")}
+              className="btn-ghost border-danger px-3 py-1 text-sm text-danger hover:bg-danger/5"
+            >
+              Recusar
+            </a>
+            <span className="ml-auto">
+              <ContactLinks phone={b.client.phone} />
+            </span>
+          </div>
+        </>
+      )}
+    </li>
+  )
+}
+
+function DayRow({
+  b,
+  now,
+  showCity,
+}: {
+  b: BookingWithClient
+  now: Date
+  showCity: boolean
+}) {
+  const done = b.startUtc < now && b.status !== "PENDING"
+  return (
+    <li className={cn("py-2.5", done && "opacity-50")}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-semibold tabular-nums">
+          {formatLisbon(b.startUtc, "HH:mm")}
+          <span className="text-muted">–{formatLisbon(b.endUtc, "HH:mm")}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          {b.status === "PENDING" && <StatusPill status="PENDING" />}
+          {showCity && <CityTag location={b.location} />}
+          <span className="tabular-nums">{formatPrice(b.servicePrice)}</span>
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <Link href={bookingHref(b)} className="min-w-0 hover:underline">
+          <span className="font-semibold">{b.client.name}</span>
+          <span className="text-muted"> · {b.serviceName}</span>
+        </Link>
+        <ContactLinks phone={b.client.phone} />
+      </div>
+      {b.notes && <p className="truncate text-sm italic text-muted">“{b.notes}”</p>}
+    </li>
   )
 }
 
 function FlashBanner({ flash, code }: { flash: string; code?: string }) {
-  let tone: "success" | "danger" | "muted" = "muted"
-  let title = ""
-  let body = ""
-
-  if (flash === "confirmed") {
-    tone = "success"
-    title = "MARCAÇÃO CONFIRMADA"
-    body = "Cliente notificado por email."
-  } else if (flash === "cancelled") {
-    tone = "danger"
-    title = "MARCAÇÃO CANCELADA"
-    body = "Cliente notificado por email."
-  } else if (flash === "already-confirmed") {
-    title = "JÁ ESTAVA CONFIRMADA"
-    body = "Sem alterações."
-  } else if (flash === "already-cancelled") {
-    title = "JÁ ESTAVA CANCELADA"
-    body = "Sem alterações."
-  } else if (flash === "error") {
-    tone = "danger"
-    title = "ERRO"
-    body = code ? `Código: ${code}` : "Ocorreu um erro."
-  } else {
-    return null
+  const messages: Record<string, { tone: "success" | "danger" | "muted"; text: string }> = {
+    confirmed: { tone: "success", text: "Marcação confirmada — o cliente foi avisado por email." },
+    cancelled: { tone: "danger", text: "Marcação cancelada — o cliente foi avisado por email." },
+    "already-confirmed": { tone: "muted", text: "Esta marcação já estava confirmada." },
+    "already-cancelled": { tone: "muted", text: "Esta marcação já estava cancelada." },
+    error: { tone: "danger", text: `Ocorreu um erro${code ? ` (${code})` : ""}.` },
   }
-
-  const cls =
-    tone === "success"
-      ? "border-success/40 bg-success/5 text-success"
-      : tone === "danger"
-        ? "border-danger/40 bg-danger/5 text-danger"
-        : "border-border bg-background-elevated text-accent"
-
+  const m = messages[flash]
+  if (!m) return null
   return (
-    <div className={`mb-6 rounded-lg border p-4 ${cls}`}>
-      <div className="font-display tracking-[0.1em] text-sm">{title}</div>
-      <div className="text-sm text-foreground/75 mt-1">{body}</div>
-    </div>
-  )
-}
-
-function StatusPill({ status }: { status: string }) {
-  const map: Record<
-    string,
-    { color: string; bg: string; icon: React.ReactNode; label: string }
-  > = {
-    PENDING: {
-      color: "text-accent",
-      bg: "bg-yellow/25 border-ink/30",
-      icon: <Clock className="h-3 w-3" />,
-      label: "Pendente",
-    },
-    CONFIRMED: {
-      color: "text-success",
-      bg: "bg-success/10 border-success/30",
-      icon: <CheckCircle2 className="h-3 w-3" />,
-      label: "Confirmada",
-    },
-    CANCELLED: {
-      color: "text-danger",
-      bg: "bg-danger/10 border-danger/30",
-      icon: <XCircle className="h-3 w-3" />,
-      label: "Cancelada",
-    },
-    COMPLETED: {
-      color: "text-muted",
-      bg: "bg-foreground/5 border-border",
-      icon: <CheckCircle2 className="h-3 w-3" />,
-      label: "Concluída",
-    },
-  }
-  const cfg = map[status] ?? map.PENDING
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${cfg.color} ${cfg.bg}`}
+    <div
+      className={cn(
+        "mb-6 rounded-lg border-2 px-4 py-3 font-semibold",
+        m.tone === "success" && "border-success/50 bg-success/10 text-success",
+        m.tone === "danger" && "border-danger/50 bg-danger/10 text-danger",
+        m.tone === "muted" && "border-ink/20 bg-card",
+      )}
     >
-      {cfg.icon}
-      {cfg.label}
-    </span>
+      {m.text}
+    </div>
   )
 }

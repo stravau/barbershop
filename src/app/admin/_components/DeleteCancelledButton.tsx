@@ -42,7 +42,7 @@ export function DeleteCancelledButton({ count }: Props) {
       className="inline-flex items-center gap-1.5 rounded-md border border-danger/40 bg-danger/5 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger/10 transition disabled:opacity-50"
     >
       <Trash2 className="h-3.5 w-3.5" />
-      {busy ? "A apagar…" : `Apagar histórico (${count})`}
+      {busy ? "A apagar…" : `Apagar canceladas (${count})`}
     </button>
   )
 }

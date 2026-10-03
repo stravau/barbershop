@@ -48,6 +48,31 @@ export function getLisbonDayOfWeek(yyyymmdd: string): 0 | 1 | 2 | 3 | 4 | 5 | 6 
 }
 
 /**
+ * Day, week (Mon–Sun), month and year boundaries in Lisbon local time, as UTC
+ * instants — lower bound inclusive, upper bound exclusive. `today` is the
+ * Lisbon calendar date (YYYY-MM-DD).
+ */
+export function lisbonPeriods(now: Date = new Date()) {
+  const today = formatTz(toZonedTime(now, TZ), "yyyy-MM-dd", { timeZone: TZ })
+  const [y, m, d] = today.split("-").map(Number)
+  // Date.UTC normalises overflow (day 32, month 13…) before we anchor to Lisbon
+  const midnight = (yy: number, mm: number, dd: number) =>
+    combineDateTimeLisbon(new Date(Date.UTC(yy, mm - 1, dd)).toISOString().slice(0, 10), "00:00")
+  const sinceMonday = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7
+  return {
+    today,
+    dayStart: midnight(y, m, d),
+    dayEnd: midnight(y, m, d + 1),
+    weekStart: midnight(y, m, d - sinceMonday),
+    weekEnd: midnight(y, m, d - sinceMonday + 7),
+    monthStart: midnight(y, m, 1),
+    monthEnd: midnight(y, m + 1, 1),
+    yearStart: midnight(y, 1, 1),
+    yearEnd: midnight(y + 1, 1, 1),
+  }
+}
+
+/**
  * Returns the UTC start (00:00 local) and end (next-day 00:00 local) of a Lisbon date.
  * Useful for "all events on day X" queries.
  */
