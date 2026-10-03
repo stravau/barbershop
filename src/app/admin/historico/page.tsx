@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import type { Prisma } from "@/generated/prisma"
-import { AdminNav } from "../_components/AdminNav"
 import { DeleteCancelledButton } from "../_components/DeleteCancelledButton"
 import { CityTag, Empty, FilterChips, StatusPill } from "../_components/ui"
 import { BOOKED_STATUSES, bookingHref, groupBy, isDone, parseCity } from "../_lib"
@@ -53,7 +52,6 @@ export default async function HistoricoPage({ searchParams }: PageProps) {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <AdminNav active="historico" />
 
       <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-x-5 gap-y-2">

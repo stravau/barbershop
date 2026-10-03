@@ -5,7 +5,6 @@ import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import { LOCATIONS, isLocationOpenOn, ymdDayOfWeek, ymdPlusDays } from "@/lib/schedule"
 import { cn } from "@/lib/utils"
-import { AdminNav } from "./_components/AdminNav"
 import { ContactLinks } from "./_components/ContactLinks"
 import { FlashBanner } from "./_components/FlashBanner"
 import { MonthCalendar, monthGrid } from "./_components/MonthCalendar"
@@ -119,7 +118,6 @@ export default async function AgendaPage({ searchParams }: PageProps) {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <AdminNav active="agenda" />
 
       {flash && <FlashBanner text={flash.text} tone={flash.tone} clearParams={["flash", "code"]} />}
 

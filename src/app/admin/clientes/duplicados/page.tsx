@@ -8,7 +8,6 @@ import {
   normalizePhone,
   type DuplicateGroup,
 } from "@/lib/clients"
-import { AdminNav } from "../../_components/AdminNav"
 import { formatPhone } from "../../_components/ContactLinks"
 import { FlashBanner } from "../../_components/FlashBanner"
 import { Empty, SectionTitle } from "../../_components/ui"
@@ -39,7 +38,6 @@ export default async function DuplicadosPage({ searchParams }: PageProps) {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <AdminNav active="clientes" />
       <div className="mx-auto max-w-3xl">
         <Link
           href="/admin/clientes"

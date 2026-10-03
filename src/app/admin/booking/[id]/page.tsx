@@ -7,7 +7,6 @@ import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
 import { cn } from "@/lib/utils"
-import { AdminNav } from "../../_components/AdminNav"
 import { ContactLinks } from "../../_components/ContactLinks"
 import { FlashBanner } from "../../_components/FlashBanner"
 import { DeleteBookingButton } from "./DeleteBookingButton"
@@ -88,7 +87,6 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      {hasSession && <AdminNav active="agenda" />}
 
       <div className="mx-auto max-w-2xl">
         {hasSession && (

@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma"
 import { formatPrice } from "@/lib/services"
 import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
 import type { Prisma } from "@/generated/prisma"
-import { AdminNav } from "../_components/AdminNav"
 import { SectionTitle, Stat } from "../_components/ui"
 import { BOOKED_STATUSES, cityName, groupBy } from "../_lib"
 
@@ -118,7 +117,6 @@ export default async function NumerosPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <AdminNav active="numeros" />
 
       <section className="mb-10">
         <SectionTitle aside="Só marcações que já aconteceram">Faturado</SectionTitle>

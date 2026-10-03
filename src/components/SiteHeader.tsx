@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { AdminHeaderNav } from "@/components/AdminHeaderNav"
 import { InstagramIcon } from "@/components/InstagramIcon"
 import { Wordmark } from "@/components/Wordmark"
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
@@ -14,6 +15,7 @@ const NAV = [
 
 export function SiteHeader() {
   const pathname = usePathname()
+  const isAdmin = pathname.startsWith("/admin")
 
   return (
     <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
@@ -21,7 +23,7 @@ export function SiteHeader() {
         <Link
           href="/"
           aria-label="Tarzan's Barbershop — início"
-          className="flex items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem]"
+          className={`${isAdmin ? "hidden sm:flex" : "flex"} shrink-0 items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem]`}
         >
           {/* Round crop into the illustration (the file has wide black margins) */}
           <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-ink bg-black sm:h-12 sm:w-12">
@@ -34,9 +36,15 @@ export function SiteHeader() {
               className="origin-[50%_45%] scale-[1.4] object-cover"
             />
           </span>
-          <Wordmark />
+          {/* On admin pages the tabs need the room on phones */}
+          <span className={isAdmin ? "hidden sm:inline-flex" : "inline-flex"}>
+            <Wordmark />
+          </span>
         </Link>
 
+        {isAdmin ? (
+          pathname !== "/admin/login" && <AdminHeaderNav pathname={pathname} />
+        ) : (
         <nav className="flex items-center gap-3 sm:gap-6">
           {NAV.map((item) => (
             <Link
@@ -64,6 +72,7 @@ export function SiteHeader() {
             </Link>
           )}
         </nav>
+        )}
       </div>
     </header>
   )

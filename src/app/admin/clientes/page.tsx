@@ -5,7 +5,6 @@ import { formatLisbon, lisbonPeriods } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import type { Prisma } from "@/generated/prisma"
 import { cn } from "@/lib/utils"
-import { AdminNav } from "../_components/AdminNav"
 import { ContactLinks } from "../_components/ContactLinks"
 import { FlashBanner } from "../_components/FlashBanner"
 import { DeleteClientButton } from "./DeleteClientButton"
@@ -93,7 +92,6 @@ export default async function ClientesPage({ searchParams }: PageProps) {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <AdminNav active="clientes" />
 
       {sp.apagado && (
         <FlashBanner

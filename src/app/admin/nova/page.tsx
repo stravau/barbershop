@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { lisbonPeriods } from "@/lib/tz"
-import { AdminNav } from "../_components/AdminNav"
 import { ManualBookingForm } from "./ManualBookingForm"
 
 export const dynamic = "force-dynamic"
@@ -10,7 +9,6 @@ export const dynamic = "force-dynamic"
 export default function NovaMarcacaoPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <AdminNav active="agenda" />
       <div className="mx-auto max-w-3xl">
         <Link
           href="/admin"
