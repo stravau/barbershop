@@ -7,6 +7,8 @@ import type { Prisma } from "@/generated/prisma"
 import { cn } from "@/lib/utils"
 import { AdminNav } from "../_components/AdminNav"
 import { ContactLinks } from "../_components/ContactLinks"
+import { FlashBanner } from "../_components/FlashBanner"
+import { DeleteClientButton } from "./DeleteClientButton"
 import { Empty, FilterChips, Stat } from "../_components/ui"
 import { isDone } from "../_lib"
 import { findDuplicates } from "@/lib/clients"
@@ -17,7 +19,7 @@ const ORDERS = ["recentes", "visitas", "nome"] as const
 type Order = (typeof ORDERS)[number]
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; ordem?: string }>
+  searchParams: Promise<{ q?: string; ordem?: string; apagado?: string }>
 }
 
 /**
@@ -92,6 +94,14 @@ export default async function ClientesPage({ searchParams }: PageProps) {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <AdminNav active="clientes" />
+
+      {sp.apagado && (
+        <FlashBanner
+          text={`${sp.apagado} foi apagado, com as marcações dele.`}
+          tone="muted"
+          clearParams={["apagado"]}
+        />
+      )}
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         <Stat label="Clientes" value={String(total)} />
@@ -179,8 +189,9 @@ export default async function ClientesPage({ searchParams }: PageProps) {
                 <span className="font-normal text-muted sm:hidden">Próxima: </span>
                 {c.next ? formatLisbon(c.next, "dd/MM 'às' HH:mm") : "—"}
               </div>
-              <div className="sm:text-right">
+              <div className="flex items-center gap-1 sm:justify-end">
                 <ContactLinks phone={c.phone} showNumber />
+                <DeleteClientButton id={c.id} name={c.name} bookingCount={c.bookings.length} />
               </div>
             </li>
           ))}
