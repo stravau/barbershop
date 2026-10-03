@@ -156,7 +156,7 @@ export default async function ClientesPage({ searchParams }: PageProps) {
         <Empty>{q ? `Nenhum cliente encontrado para “${q}”.` : "Ainda não há clientes."}</Empty>
       ) : (
         <ul className="divide-y divide-ink/10 border-y-2 border-ink">
-          <li className="caps hidden gap-4 py-2 text-xs text-muted sm:grid sm:grid-cols-[minmax(0,2fr)_1fr_0.8fr_0.9fr_auto]">
+          <li className="caps hidden gap-4 py-2 text-xs text-muted sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_16.5rem]">
             <span>Cliente</span>
             <span>Visitas · cartão</span>
             <span>Última visita</span>
@@ -166,11 +166,11 @@ export default async function ClientesPage({ searchParams }: PageProps) {
           {rows.map((c) => (
             <li
               key={c.id}
-              className="grid grid-cols-2 items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[minmax(0,2fr)_1fr_0.8fr_0.9fr_auto]"
+              className="grid grid-cols-2 items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_16.5rem]"
             >
               <div className="col-span-2 min-w-0 sm:col-span-1">
                 <div className="font-semibold">{c.name}</div>
-                <div className="truncate text-sm text-muted">
+                <div className="text-sm break-words text-muted">
                   {c.email ?? "sem email"}
                   {c.spent > 0 && <> · {formatPrice(c.spent)} no total</>}
                   {c.cancelled > 0 && <> · {c.cancelled} cancel.</>}
