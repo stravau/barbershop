@@ -7,6 +7,7 @@ import { LOCATIONS, isLocationOpenOn, ymdDayOfWeek, ymdPlusDays } from "@/lib/sc
 import { cn } from "@/lib/utils"
 import { AdminNav } from "./_components/AdminNav"
 import { ContactLinks } from "./_components/ContactLinks"
+import { FlashBanner } from "./_components/FlashBanner"
 import { MonthCalendar, monthGrid } from "./_components/MonthCalendar"
 import { CityTag, FilterChips, SectionTitle, Stat, StatusPill } from "./_components/ui"
 import {
@@ -112,6 +113,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
     const qs = q.toString()
     return `/admin${qs ? `?${qs}` : ""}`
   }
+  const flash = sp.flash ? flashMessage(sp.flash, sp.code) : undefined
   // City filter keeps the month/day being looked at
   const cityHref = (c?: string) => href({ city: c, month, day: selected })
 
@@ -119,7 +121,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <AdminNav active="agenda" />
 
-      {sp.flash && <FlashBanner flash={sp.flash} code={sp.code} />}
+      {flash && <FlashBanner text={flash.text} tone={flash.tone} clearParams={["flash", "code"]} />}
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         <Stat
@@ -377,7 +379,11 @@ function DayRow({
   )
 }
 
-function FlashBanner({ flash, code }: { flash: string; code?: string }) {
+/** Message for the ?flash=… set by the confirm/reject/add actions. */
+function flashMessage(
+  flash: string,
+  code?: string,
+): { tone: "success" | "danger" | "muted"; text: string } | undefined {
   const messages: Record<string, { tone: "success" | "danger" | "muted"; text: string }> = {
     confirmed: { tone: "success", text: "Marcação confirmada — o cliente foi avisado por email." },
     added: { tone: "success", text: "Marcação adicionada." },
@@ -386,18 +392,5 @@ function FlashBanner({ flash, code }: { flash: string; code?: string }) {
     "already-cancelled": { tone: "muted", text: "Esta marcação já estava cancelada." },
     error: { tone: "danger", text: `Ocorreu um erro${code ? ` (${code})` : ""}.` },
   }
-  const m = messages[flash]
-  if (!m) return null
-  return (
-    <div
-      className={cn(
-        "mb-6 rounded-lg border-2 px-4 py-3 font-semibold",
-        m.tone === "success" && "border-success/50 bg-success/10 text-success",
-        m.tone === "danger" && "border-danger/50 bg-danger/10 text-danger",
-        m.tone === "muted" && "border-ink/20 bg-card",
-      )}
-    >
-      {m.text}
-    </div>
-  )
+  return messages[flash]
 }

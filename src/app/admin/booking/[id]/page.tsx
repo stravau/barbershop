@@ -9,6 +9,7 @@ import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
 import { cn } from "@/lib/utils"
 import { AdminNav } from "../../_components/AdminNav"
 import { ContactLinks } from "../../_components/ContactLinks"
+import { FlashBanner } from "../../_components/FlashBanner"
 import { CityTag, StatusPill } from "../../_components/ui"
 import { isDone } from "../../_lib"
 
@@ -99,16 +100,11 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
         )}
 
         {notice && (
-          <div
-            className={cn(
-              "mb-5 rounded-lg border-2 px-4 py-3 font-semibold",
-              notice.tone === "success" && "border-success/50 bg-success/10 text-success",
-              notice.tone === "danger" && "border-danger/50 bg-danger/10 text-danger",
-              notice.tone === "muted" && "border-ink/20 bg-card",
-            )}
-          >
-            {notice.text}
-          </div>
+          <FlashBanner
+            text={notice.text}
+            tone={notice.tone}
+            clearParams={["confirmed", "rejected", "already"]}
+          />
         )}
 
         <div className="rounded-lg border-2 border-ink bg-card p-6 shadow-[6px_6px_0_var(--ink)] sm:p-8">
