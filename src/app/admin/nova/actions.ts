@@ -9,7 +9,7 @@ import { buildCombo, validateSelection } from "@/lib/services"
 import { getWorkingHours, type LocationId } from "@/lib/schedule"
 import { combineDateTimeLisbon, getLisbonDayOfWeek } from "@/lib/tz"
 import { createEvent } from "@/lib/gcal"
-import { NO_PHONE_PREFIX } from "../_lib"
+import { NO_PHONE_PREFIX, normalizePhone } from "@/lib/clients"
 
 export interface ManualBookingState {
   error?: string
@@ -30,7 +30,7 @@ export async function createManualBooking(
   }
 
   const name = String(form.get("name") ?? "").trim()
-  const rawPhone = String(form.get("phone") ?? "").replace(/\D/g, "")
+  const phone = normalizePhone(String(form.get("phone") ?? ""))
   const email = String(form.get("email") ?? "").trim() || null
   const services = form.getAll("services").map(String)
   const location = String(form.get("location") ?? "") as LocationId
@@ -39,8 +39,6 @@ export async function createManualBooking(
   const notes = String(form.get("notes") ?? "").trim() || null
 
   if (name.length < 2) return { error: "Escreve o nome do cliente." }
-  // Portuguese numbers can be typed without the country code
-  const phone = rawPhone.length === 9 ? `351${rawPhone}` : rawPhone
   if (phone && !/^\d{11,15}$/.test(phone)) return { error: "Telemóvel inválido." }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Email inválido." }
   const valid = validateSelection(services)

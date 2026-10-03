@@ -1,4 +1,5 @@
-import { Search } from "lucide-react"
+import Link from "next/link"
+import { ChevronRight, Search } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon, lisbonPeriods } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
@@ -8,6 +9,7 @@ import { AdminNav } from "../_components/AdminNav"
 import { ContactLinks } from "../_components/ContactLinks"
 import { Empty, FilterChips, Stat } from "../_components/ui"
 import { isDone } from "../_lib"
+import { findDuplicates } from "@/lib/clients"
 
 export const dynamic = "force-dynamic"
 
@@ -47,6 +49,14 @@ export default async function ClientesPage({ searchParams }: PageProps) {
     prisma.client.count(),
     prisma.client.count({ where: { createdAt: { gte: p.monthStart } } }),
   ])
+
+  // Repeated clients (only worth computing over the full list, not a search)
+  const duplicates = q
+    ? null
+    : findDuplicates(clients.map((c) => ({ ...c, bookingCount: c.bookings.length })))
+  const duplicateCount = duplicates
+    ? duplicates.sure.reduce((n, g) => n + g.clients.length - 1, 0) + duplicates.probable.length
+    : 0
 
   const rows = clients.map((c) => {
     const done = c.bookings.filter((b) => isDone(b, now))
@@ -92,6 +102,20 @@ export default async function ClientesPage({ searchParams }: PageProps) {
           sub={q ? "na pesquisa" : undefined}
         />
       </div>
+
+      {duplicateCount > 0 && (
+        <Link
+          href="/admin/clientes/duplicados"
+          className="mb-6 flex items-center justify-between gap-3 rounded-lg border-2 border-ink bg-yellow/30 px-4 py-3 font-semibold shadow-[3px_3px_0_var(--ink)] hover:bg-yellow/50"
+        >
+          <span>
+            {duplicateCount} {duplicateCount === 1 ? "cliente parece repetido" : "clientes parecem repetidos"}
+          </span>
+          <span className="caps inline-flex items-center gap-1 text-sm">
+            Rever e juntar <ChevronRight className="h-4 w-4" />
+          </span>
+        </Link>
+      )}
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <form action="/admin/clientes" className="flex w-full max-w-sm items-center gap-2">

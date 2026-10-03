@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { buildCombo, validateSelection } from "@/lib/services"
 import { createEvent } from "@/lib/gcal"
 import { formatLisbon } from "@/lib/tz"
+import { normalizePhone } from "@/lib/clients"
 import {
   sendEmail,
   adminBookingEmail,
@@ -44,7 +45,9 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { location, services, startUtcIso, client, notes } = parsed.data
+  const { location, services, startUtcIso, notes } = parsed.data
+  // Same person typed with or without 351 must end up as one client
+  const client = { ...parsed.data.client, phone: normalizePhone(parsed.data.client.phone) }
 
   const v = validateSelection(services)
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
