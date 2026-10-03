@@ -14,6 +14,19 @@ export function isDone(b: { status: string; startUtc: Date }, now: Date): boolea
   return BOOKED_STATUSES.includes(b.status) && b.startUtc < now
 }
 
+/** What was actually received for a booking: service price + tip. */
+export function received(b: { servicePrice: number; tipEur: number }): number {
+  return b.servicePrice + b.tipEur
+}
+
+/** "12,5" / "12.50" / "" -> 12.5 / 0. Returns null when it isn't a sane amount. */
+export function parseEuros(raw: string): number | null {
+  const s = raw.trim().replace(",", ".")
+  if (!s) return 0
+  const n = Number(s)
+  return Number.isFinite(n) && n >= 0 && n <= 1000 ? Math.round(n * 100) / 100 : null
+}
+
 export function cityName(location: string): string {
   return location === "lisboa" ? "Lisboa" : "Setúbal"
 }

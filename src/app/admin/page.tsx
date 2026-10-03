@@ -8,12 +8,13 @@ import { cn } from "@/lib/utils"
 import { ContactLinks } from "./_components/ContactLinks"
 import { FlashBanner } from "./_components/FlashBanner"
 import { MonthCalendar, monthGrid } from "./_components/MonthCalendar"
-import { CityTag, FilterChips, SectionTitle, Stat, StatusPill } from "./_components/ui"
+import { CityTag, FilterChips, PriceWithTip, SectionTitle, Stat, StatusPill } from "./_components/ui"
 import {
   BOOKED_STATUSES,
   bookingHref,
   groupBy,
   parseCity,
+  received,
   relativeDay,
   type BookingWithClient,
 } from "./_lib"
@@ -77,7 +78,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
     }),
     prisma.booking.aggregate({
       where: { status: { in: BOOKED_STATUSES }, startUtc: { gte: p.dayStart, lt: p.dayEnd }, ...byCity },
-      _sum: { servicePrice: true },
+      _sum: { servicePrice: true, tipEur: true },
       _count: true,
     }),
     prisma.booking.aggregate({
@@ -86,7 +87,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
         startUtc: { gte: p.weekStart, lt: p.weekEnd },
         ...byCity,
       },
-      _sum: { servicePrice: true },
+      _sum: { servicePrice: true, tipEur: true },
       _count: true,
     }),
   ])
@@ -127,12 +128,12 @@ export default async function AgendaPage({ searchParams }: PageProps) {
         <Stat
           label="Hoje"
           value={String(today._count)}
-          sub={`marcações · ${formatPrice(today._sum.servicePrice ?? 0)}`}
+          sub={`marcações · ${formatPrice((today._sum.servicePrice ?? 0) + (today._sum.tipEur ?? 0))}`}
         />
         <Stat
           label="Esta semana"
           value={String(week._count)}
-          sub={`marcações · ${formatPrice(week._sum.servicePrice ?? 0)}`}
+          sub={`marcações · ${formatPrice((week._sum.servicePrice ?? 0) + (week._sum.tipEur ?? 0))}`}
         />
         <Stat
           label="Por confirmar"
@@ -285,8 +286,8 @@ function DayPanel({
   )
 }
 
-function sum(bookings: { servicePrice: number }[]): number {
-  return bookings.reduce((s, b) => s + b.servicePrice, 0)
+function sum(bookings: { servicePrice: number; tipEur: number }[]): number {
+  return bookings.reduce((s, b) => s + received(b), 0)
 }
 
 /** One entry of "Próximas marcações"; pending requests get the actions. */
@@ -323,7 +324,7 @@ function UpcomingItem({
         </span>
         <span className="flex items-center gap-1.5">
           {showCity && <CityTag location={b.location} />}
-          <span className="text-sm tabular-nums">{formatPrice(b.servicePrice)}</span>
+          <PriceWithTip price={b.servicePrice} tip={b.tipEur} className="text-sm" />
         </span>
       </div>
       <div className="flex items-center justify-between gap-2">
@@ -383,7 +384,7 @@ function DayRow({
         <span className="flex items-center gap-1.5">
           {b.status === "PENDING" && <StatusPill status="PENDING" />}
           {showCity && <CityTag location={b.location} />}
-          <span className="tabular-nums">{formatPrice(b.servicePrice)}</span>
+          <PriceWithTip price={b.servicePrice} tip={b.tipEur} />
         </span>
       </div>
       <div className="flex items-center justify-between gap-2">

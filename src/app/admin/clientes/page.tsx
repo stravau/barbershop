@@ -9,7 +9,7 @@ import { ContactLinks } from "../_components/ContactLinks"
 import { FlashBanner } from "../_components/FlashBanner"
 import { DeleteClientButton } from "./DeleteClientButton"
 import { Empty, FilterChips, Stat } from "../_components/ui"
-import { isDone } from "../_lib"
+import { isDone, received } from "../_lib"
 import { findDuplicates } from "@/lib/clients"
 
 export const dynamic = "force-dynamic"
@@ -45,7 +45,9 @@ export default async function ClientesPage({ searchParams }: PageProps) {
   const [clients, total, newThisMonth] = await Promise.all([
     prisma.client.findMany({
       where: search,
-      include: { bookings: { select: { startUtc: true, status: true, servicePrice: true } } },
+      include: {
+        bookings: { select: { startUtc: true, status: true, servicePrice: true, tipEur: true } },
+      },
     }),
     prisma.client.count(),
     prisma.client.count({ where: { createdAt: { gte: p.monthStart } } }),
@@ -67,7 +69,7 @@ export default async function ClientesPage({ searchParams }: PageProps) {
     return {
       ...c,
       visits: done.length,
-      spent: done.reduce((s, b) => s + b.servicePrice, 0),
+      spent: done.reduce((s, b) => s + received(b), 0),
       lastVisit: done.reduce<Date | null>((m, b) => (!m || b.startUtc > m ? b.startUtc : m), null),
       next: next?.startUtc ?? null,
       cancelled: c.bookings.filter((b) => b.status === "CANCELLED").length,

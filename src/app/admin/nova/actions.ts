@@ -10,6 +10,7 @@ import { getWorkingHours, type LocationId } from "@/lib/schedule"
 import { combineDateTimeLisbon, getLisbonDayOfWeek } from "@/lib/tz"
 import { createEvent } from "@/lib/gcal"
 import { NO_PHONE_PREFIX, fixedPriceFor, normalizePhone } from "@/lib/clients"
+import { parseEuros } from "../_lib"
 
 export interface ManualBookingState {
   error?: string
@@ -37,8 +38,10 @@ export async function createManualBooking(
   const date = String(form.get("date") ?? "")
   const time = String(form.get("time") ?? "")
   const notes = String(form.get("notes") ?? "").trim() || null
+  const tip = parseEuros(String(form.get("tip") ?? ""))
 
   if (name.length < 2) return { error: "Escreve o nome do cliente." }
+  if (tip === null) return { error: "Gorjeta inválida." }
   if (phone && !/^\d{11,15}$/.test(phone)) return { error: "Telemóvel inválido." }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Email inválido." }
   const valid = validateSelection(services)
@@ -78,6 +81,7 @@ export async function createManualBooking(
       serviceId: combo.key,
       serviceName: combo.name,
       servicePrice: fixedPriceFor(name) ?? combo.priceEur,
+      tipEur: tip,
       durationMin: combo.durationMin,
       location,
       startUtc,

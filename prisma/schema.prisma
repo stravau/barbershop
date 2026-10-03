@@ -42,6 +42,7 @@ model Booking {
   serviceName  String    // denormalized snapshot in case the service changes/is removed
   servicePrice Float     // denormalized in cents-equivalent (Float OK for 2dp money at this scale)
   durationMin  Int       // duration in minutes (snapshot)
+  tipEur       Float     @default(0) // tip received on top of servicePrice, entered in the admin
 
   location     String    // "lisboa" | "setubal" — see src/lib/schedule.ts
 

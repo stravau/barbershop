@@ -5,8 +5,8 @@ import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import type { Prisma } from "@/generated/prisma"
 import { DeleteCancelledButton } from "../_components/DeleteCancelledButton"
-import { CityTag, Empty, FilterChips, StatusPill } from "../_components/ui"
-import { BOOKED_STATUSES, bookingHref, groupBy, isDone, parseCity } from "../_lib"
+import { CityTag, Empty, FilterChips, PriceWithTip, StatusPill } from "../_components/ui"
+import { BOOKED_STATUSES, bookingHref, groupBy, isDone, parseCity, received } from "../_lib"
 
 export const dynamic = "force-dynamic"
 
@@ -80,6 +80,7 @@ export default async function HistoricoPage({ searchParams }: PageProps) {
         [...months].map(([key, items], monthIdx) => {
           const realized = items.filter((b) => isDone(b, now))
           const cancelledInMonth = items.filter((b) => b.status === "CANCELLED").length
+          const tipsInMonth = realized.reduce((s, b) => s + b.tipEur, 0)
           return (
             <details key={key} open={monthIdx < 2} className="group mb-4">
               <summary className="flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-2 border-b-2 border-ink pb-1.5 [&::-webkit-details-marker]:hidden">
@@ -90,8 +91,9 @@ export default async function HistoricoPage({ searchParams }: PageProps) {
                 <span className="text-sm text-muted">
                   {realized.length} realizadas ·{" "}
                   <strong className="text-ink">
-                    {formatPrice(realized.reduce((s, b) => s + b.servicePrice, 0))}
+                    {formatPrice(realized.reduce((s, b) => s + received(b), 0))}
                   </strong>
+                  {tipsInMonth > 0 && <> (inclui {formatPrice(tipsInMonth)} de gorjetas)</>}
                   {cancelledInMonth > 0 && <> · {cancelledInMonth} canceladas</>}
                 </span>
               </summary>
@@ -117,15 +119,17 @@ export default async function HistoricoPage({ searchParams }: PageProps) {
                           <CityTag location={b.location} />
                         </span>
                       )}
-                      <span
-                        className={
-                          isCancelled
-                            ? "w-16 shrink-0 text-right text-muted tabular-nums line-through"
-                            : "w-16 shrink-0 text-right tabular-nums"
-                        }
-                      >
-                        {formatPrice(b.servicePrice)}
-                      </span>
+                      {isCancelled ? (
+                        <span className="w-16 shrink-0 text-right text-muted tabular-nums line-through">
+                          {formatPrice(b.servicePrice)}
+                        </span>
+                      ) : (
+                        <PriceWithTip
+                          price={b.servicePrice}
+                          tip={b.tipEur}
+                          className="min-w-16 shrink-0 text-right"
+                        />
+                      )}
                       <span className="hidden w-24 text-right sm:block">
                         <StatusPill status={b.status} done={isDone(b, now)} />
                       </span>

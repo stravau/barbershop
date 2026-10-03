@@ -1,9 +1,8 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { startTransition, useActionState, useEffect, useRef, useState } from "react"
 import { SERVICES, buildCombo, formatPrice, validateSelection, type ServiceId } from "@/lib/services"
 import { LOCATIONS } from "@/lib/schedule"
-import { cn } from "@/lib/utils"
 import { createManualBooking, type ManualBookingState } from "./actions"
 
 export function ManualBookingForm({ today }: { today: string }) {
@@ -11,12 +10,36 @@ export function ManualBookingForm({ today }: { today: string }) {
     createManualBooking,
     {},
   )
+  // Checkboxes are uncontrolled and the selection is read back from the form,
+  // so ticks made before hydration still count (the server validates anyway).
+  const formRef = useRef<HTMLFormElement>(null)
   const [services, setServices] = useState<ServiceId[]>([])
+  const syncServices = () => {
+    if (!formRef.current) return
+    setServices(new FormData(formRef.current).getAll("services").map(String) as ServiceId[])
+  }
+  useEffect(() => {
+    if (!formRef.current) return
+    // Picks up anything ticked before hydration
+    const ticked = new FormData(formRef.current).getAll("services").map(String) as ServiceId[]
+    if (ticked.length > 0) startTransition(() => setServices(ticked))
+  }, [])
   const valid = validateSelection(services)
   const combo = valid.ok ? buildCombo(services) : null
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form
+      ref={formRef}
+      action={formAction}
+      // Dispatch by hand once hydrated: a plain form action makes React clear
+      // every field afterwards — even when the server answers with an error.
+      onSubmit={(e) => {
+        e.preventDefault()
+        const data = new FormData(e.currentTarget)
+        startTransition(() => formAction(data))
+      }}
+      className="space-y-6"
+    >
       <fieldset>
         <Legend>Cliente</Legend>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -38,32 +61,21 @@ export function ManualBookingForm({ today }: { today: string }) {
       <fieldset>
         <Legend>Serviços *</Legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {SERVICES.map((s) => {
-            const checked = services.includes(s.id)
-            return (
-              <label
-                key={s.id}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2 rounded-md border-2 px-3 py-2.5 transition",
-                  checked ? "border-ink bg-yellow/30" : "border-ink/20 bg-card hover:border-ink",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  name="services"
-                  value={s.id}
-                  checked={checked}
-                  onChange={() =>
-                    setServices((prev) =>
-                      prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id],
-                    )
-                  }
-                  className="h-4 w-4 accent-[var(--ink)]"
-                />
-                <span className="font-semibold">{s.name}</span>
-              </label>
-            )
-          })}
+          {SERVICES.map((s) => (
+            <label
+              key={s.id}
+              className="flex cursor-pointer items-center gap-2 rounded-md border-2 border-ink/20 bg-card px-3 py-2.5 transition hover:border-ink has-[:checked]:border-ink has-[:checked]:bg-yellow/30"
+            >
+              <input
+                type="checkbox"
+                name="services"
+                value={s.id}
+                onChange={syncServices}
+                className="h-4 w-4 accent-[var(--ink)]"
+              />
+              <span className="font-semibold">{s.name}</span>
+            </label>
+          ))}
         </div>
         <p className="mt-1.5 text-sm">
           {combo ? (
@@ -113,9 +125,22 @@ export function ManualBookingForm({ today }: { today: string }) {
         </p>
       </fieldset>
 
-      <Field label="Notas (opcional)">
-        <textarea name="notes" rows={2} className="input" />
-      </Field>
+      <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
+        <Field label="Gorjeta (opcional)">
+          <div className="relative">
+            <input name="tip" inputMode="decimal" placeholder="0" className="input pr-8" />
+            <span className="absolute top-1/2 right-3 -translate-y-1/2 text-muted">€</span>
+          </div>
+        </Field>
+        <Field label="Notas (opcional)">
+          <textarea name="notes" rows={1} className="input" />
+        </Field>
+      </div>
+      {combo && (
+        <p className="-mt-3 text-xs text-muted">
+          A gorjeta é o que recebeste a mais do que os {formatPrice(combo.priceEur)} do serviço.
+        </p>
+      )}
 
       {state.error && (
         <p className="rounded-md border-2 border-danger/50 bg-danger/10 px-3 py-2 font-semibold text-danger">
@@ -123,7 +148,7 @@ export function ManualBookingForm({ today }: { today: string }) {
         </p>
       )}
 
-      <button type="submit" disabled={pending || !combo} className="btn">
+      <button type="submit" disabled={pending} className="btn">
         {pending ? "A guardar…" : "Guardar marcação"}
       </button>
     </form>
