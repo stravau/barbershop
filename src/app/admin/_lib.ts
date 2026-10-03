@@ -30,6 +30,16 @@ export function whatsappHref(phone: string): string {
   return `https://wa.me/${phone}`
 }
 
+/**
+ * Client.phone is the client's unique key. Bookings added in the admin
+ * without a number get a placeholder starting with this prefix.
+ */
+export const NO_PHONE_PREFIX = "sem-telefone-"
+
+export function hasPhone(phone: string): boolean {
+  return /^\d+$/.test(phone)
+}
+
 /** "Hoje" / "Amanhã" / "Ontem" for the Lisbon dates around `today`, else null. */
 export function relativeDay(date: Date, today: string): string | null {
   const ymd = formatLisbon(date, "yyyy-MM-dd")

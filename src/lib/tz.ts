@@ -31,11 +31,10 @@ export function formatLisbon(date: Date, fmt: string): string {
  * @example combineDateTimeLisbon("2026-05-05", "15:00") -> Date for 14:00 UTC (during BST)
  */
 export function combineDateTimeLisbon(yyyymmdd: string, hhmm: string): Date {
-  const [y, m, d] = yyyymmdd.split("-").map(Number)
-  const [hh, mm] = hhmm.split(":").map(Number)
-  // Construct an "as if UTC" date with the wall-clock components, then shift by Lisbon offset
-  const naive = new Date(Date.UTC(y, m - 1, d, hh, mm))
-  return fromZonedTime(naive, TZ)
+  // Pass the wall-clock time as an offset-less ISO string: date-fns-tz reads it
+  // as Lisbon time. (A Date object would be read in the *machine's* timezone,
+  // which is only right on UTC servers.)
+  return fromZonedTime(`${yyyymmdd}T${hhmm}:00`, TZ)
 }
 
 /**

@@ -1,5 +1,5 @@
 import { MessageCircle, Phone } from "lucide-react"
-import { whatsappHref } from "../_lib"
+import { hasPhone, whatsappHref } from "../_lib"
 
 /** "351912345678" -> "+351 912 345 678" (other formats are shown as given). */
 export function formatPhone(phone: string): string {
@@ -9,6 +9,9 @@ export function formatPhone(phone: string): string {
 
 /** WhatsApp + call links for a client's phone. */
 export function ContactLinks({ phone, showNumber }: { phone: string; showNumber?: boolean }) {
+  if (!hasPhone(phone)) {
+    return showNumber ? <span className="text-sm text-muted">sem telefone</span> : null
+  }
   return (
     <span className="inline-flex items-center gap-1">
       <a

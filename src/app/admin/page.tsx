@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Plus } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
@@ -139,7 +140,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
         />
       </div>
 
-      <div className="mb-8">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
         <FilterChips
           options={[
             { href: cityHref(), label: "Todas as cidades", active: !city },
@@ -147,6 +148,9 @@ export default async function AgendaPage({ searchParams }: PageProps) {
             { href: cityHref("lisboa"), label: "Lisboa", active: city === "lisboa" },
           ]}
         />
+        <Link href="/admin/nova" className="btn btn-sm">
+          <Plus className="h-4 w-4" /> Nova marcação
+        </Link>
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
@@ -376,6 +380,7 @@ function DayRow({
 function FlashBanner({ flash, code }: { flash: string; code?: string }) {
   const messages: Record<string, { tone: "success" | "danger" | "muted"; text: string }> = {
     confirmed: { tone: "success", text: "Marcação confirmada — o cliente foi avisado por email." },
+    added: { tone: "success", text: "Marcação adicionada." },
     cancelled: { tone: "danger", text: "Marcação cancelada — o cliente foi avisado por email." },
     "already-confirmed": { tone: "muted", text: "Esta marcação já estava confirmada." },
     "already-cancelled": { tone: "muted", text: "Esta marcação já estava cancelada." },
