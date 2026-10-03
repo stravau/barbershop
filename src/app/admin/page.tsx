@@ -387,6 +387,7 @@ function flashMessage(
   const messages: Record<string, { tone: "success" | "danger" | "muted"; text: string }> = {
     confirmed: { tone: "success", text: "Marcação confirmada — o cliente foi avisado por email." },
     added: { tone: "success", text: "Marcação adicionada." },
+    deleted: { tone: "muted", text: "Marcação apagada — o cliente não foi avisado." },
     cancelled: { tone: "danger", text: "Marcação cancelada — o cliente foi avisado por email." },
     "already-confirmed": { tone: "muted", text: "Esta marcação já estava confirmada." },
     "already-cancelled": { tone: "muted", text: "Esta marcação já estava cancelada." },

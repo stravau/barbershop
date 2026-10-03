@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { AdminNav } from "../../_components/AdminNav"
 import { ContactLinks } from "../../_components/ContactLinks"
 import { FlashBanner } from "../../_components/FlashBanner"
+import { DeleteBookingButton } from "./DeleteBookingButton"
 import { CityTag, StatusPill } from "../../_components/ui"
 import { isDone } from "../../_lib"
 
@@ -155,6 +156,10 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             {booking.notes && (
               <p className="mt-4 rounded-md bg-yellow/25 px-3 py-2 italic">“{booking.notes}”</p>
             )}
+          </div>
+
+          <div className="mt-7 border-t border-ink/15 pt-4">
+            <DeleteBookingButton id={booking.id} token={booking.adminToken} />
           </div>
         </div>
 
