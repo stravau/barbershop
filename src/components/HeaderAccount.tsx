@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { UserRound } from "lucide-react"
 import { logout } from "@/app/conta/actions"
+import { SignupHint, retireSignupHint } from "@/components/SignupHint"
 
 export type HeaderSession = { signedIn: false } | { signedIn: true; name: string }
 
@@ -14,7 +15,11 @@ export function useHeaderSession(pathname: string) {
     let live = true
     fetch("/api/conta/sessao", { cache: "no-store" })
       .then((r) => r.json())
-      .then((s: HeaderSession) => live && setSession(s))
+      .then((s: HeaderSession) => {
+        // Someone who has signed in here doesn't need the sign-up hint again
+        if (s.signedIn) retireSignupHint()
+        if (live) setSession(s)
+      })
       .catch(() => live && setSession({ signedIn: false }))
     return () => {
       live = false
@@ -38,9 +43,12 @@ export function HeaderAccount({
 
   if (!session.signedIn) {
     return pathname.startsWith("/conta/entrar") ? null : (
-      <Link href="/conta/entrar" className="btn btn-sm whitespace-nowrap">
-        Login/Registar
-      </Link>
+      <span className="relative">
+        <Link href="/conta/entrar" onClick={retireSignupHint} className="btn btn-sm whitespace-nowrap">
+          Login/Registar
+        </Link>
+        <SignupHint />
+      </span>
     )
   }
 
