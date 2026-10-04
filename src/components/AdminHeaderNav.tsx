@@ -44,7 +44,7 @@ export function AdminHeaderNav({ pathname }: { pathname: string }) {
               href={t.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "caps relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-md border-2 border-b-0 px-1.5 pt-2 pb-2.5 text-[0.75rem] transition min-[380px]:px-2 min-[380px]:text-[0.8rem] sm:px-4 sm:text-[0.95rem]",
+                "caps relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-md border-2 border-b-0 px-1 pt-2 pb-2.5 text-[0.7rem] transition min-[380px]:px-1.5 min-[380px]:text-[0.75rem] sm:px-4 sm:text-[0.95rem]",
                 active ? "z-10 border-ink bg-paper" : "border-transparent text-muted hover:text-ink",
               )}
             >

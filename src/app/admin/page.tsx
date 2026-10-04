@@ -24,6 +24,8 @@ export const dynamic = "force-dynamic"
 const UPCOMING_CONFIRMED = 10
 /** …of which this many are shown on phones. */
 const UPCOMING_ON_PHONES = 4
+/** …and on desktop, how many fit beside the calendar (the rest go under it). */
+const UPCOMING_BESIDE_CALENDAR = 4
 
 interface PageProps {
   searchParams: Promise<{
@@ -153,9 +155,47 @@ export default async function AgendaPage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
-        {/* Left: calendar, with the selected day's bookings underneath */}
-        <div>
+      {/*
+        Phones (DOM order): upcoming → calendar → selected day.
+        Desktop: calendar on the left; on the right the selected day and,
+        under it, the first few upcoming bookings. The rest of the upcoming
+        list continues under the calendar.
+      */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
+        <section className="lg:col-start-2 lg:row-start-2">
+          <SectionTitle
+            aside={pending.length > 0 ? `${pending.length} por confirmar` : undefined}
+          >
+            Próximas marcações
+          </SectionTitle>
+          {upcoming.length === 0 ? (
+            <p className="py-6 text-center text-muted">Sem marcações à frente.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {upcoming.map((b, i) => {
+                // Phones: every request, but only the next few confirmed
+                const confirmedBefore = upcoming
+                  .slice(0, i)
+                  .filter((x) => x.status !== "PENDING").length
+                const onPhone = b.status === "PENDING" || confirmedBefore < UPCOMING_ON_PHONES
+                // Desktop: the first few here; the rest go under the calendar
+                const onDesktop = i < UPCOMING_BESIDE_CALENDAR
+                return (
+                  <UpcomingItem
+                    key={b.id}
+                    b={b}
+                    now={now}
+                    today={p.today}
+                    showCity={!city}
+                    className={cn(onPhone ? "block" : "hidden", onDesktop ? "lg:block" : "lg:hidden")}
+                  />
+                )
+              })}
+            </ul>
+          )}
+        </section>
+
+        <div className="lg:col-start-1 lg:row-span-2 lg:row-start-1">
           <MonthCalendar
             month={month}
             byDay={byDay}
@@ -164,6 +204,19 @@ export default async function AgendaPage({ searchParams }: PageProps) {
             cities={cities}
             hrefFor={({ month: m, day }) => href({ city, month: m, day })}
           />
+          {upcoming.length > UPCOMING_BESIDE_CALENDAR && (
+            <section className="mt-10 hidden lg:block">
+              <SectionTitle>Mais marcações</SectionTitle>
+              <ul className="grid grid-cols-2 gap-2.5">
+                {upcoming.slice(UPCOMING_BESIDE_CALENDAR).map((b) => (
+                  <UpcomingItem key={b.id} b={b} now={now} today={p.today} showCity={!city} />
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+
+        <div className="lg:col-start-2 lg:row-start-1">
           <DayPanel
             day={selected}
             items={dayItems}
@@ -174,38 +227,6 @@ export default async function AgendaPage({ searchParams }: PageProps) {
           />
         </div>
 
-        {/* Right: what's coming up; first on phones so requests are seen */}
-        <section className="order-first lg:order-none">
-          <SectionTitle
-            aside={pending.length > 0 ? `${pending.length} por confirmar` : undefined}
-          >
-            Próximas marcações
-          </SectionTitle>
-          {upcoming.length === 0 ? (
-            <p className="py-6 text-center text-muted">Sem marcações à frente.</p>
-          ) : (
-            <ul className="space-y-2.5">
-              {upcoming.map((b) => {
-                // On phones keep the list short (the calendar sits below it):
-                // every request, but only the next few confirmed bookings
-                const confirmedBefore = upcoming
-                  .slice(0, upcoming.indexOf(b))
-                  .filter((x) => x.status !== "PENDING").length
-                const phoneHidden = b.status !== "PENDING" && confirmedBefore >= UPCOMING_ON_PHONES
-                return (
-                  <UpcomingItem
-                    key={b.id}
-                    b={b}
-                    now={now}
-                    today={p.today}
-                    showCity={!city}
-                    className={phoneHidden ? "hidden lg:block" : undefined}
-                  />
-                )
-              })}
-            </ul>
-          )}
-        </section>
       </div>
     </main>
   )
@@ -231,7 +252,7 @@ function DayPanel({
   const rel = relativeDay(noon, today)
   const booked = items.filter((b) => b.status !== "PENDING")
   return (
-    <div className="mt-8">
+    <div>
       <div className="border-b-2 border-ink pb-1.5">
         <h3 className="text-xl">
           {rel && (

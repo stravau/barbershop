@@ -19,14 +19,14 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6">
         <Link
           href="/"
           aria-label="Tarzan's Barbershop — início"
-          className={`${isAdmin ? "hidden sm:flex" : "flex"} shrink-0 items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem]`}
+          className="flex shrink-0 items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem]"
         >
           {/* Round crop into the illustration (the file has wide black margins) */}
-          <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-ink bg-black sm:h-12 sm:w-12">
+          <span className={`relative ${isAdmin ? "h-8 w-8" : "h-10 w-10"} shrink-0 overflow-hidden rounded-full border-2 border-ink bg-black sm:h-12 sm:w-12`}>
             <Image
               src="/logo.jpeg"
               alt=""
