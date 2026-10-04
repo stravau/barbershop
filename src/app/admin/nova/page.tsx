@@ -14,7 +14,7 @@ export default async function NovaMarcacaoPage() {
         <BackLink href="/admin" />
         <h1 className="text-3xl">Nova marcação</h1>
         <p className="mt-2 mb-8 text-muted">
-          Para marcações combinadas fora do site — por WhatsApp, telefone ou ao
+          Para marcações combinadas fora do site, por WhatsApp, telefone ou ao
           balcão. Ficam logo confirmadas e o cliente não recebe email.
         </p>
         <div className="rounded-lg border-2 border-ink bg-card p-5 shadow-[6px_6px_0_var(--ink)] sm:p-7">

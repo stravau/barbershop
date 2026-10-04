@@ -45,7 +45,7 @@ export async function sendClientCode(rawEmail: string): Promise<"invalid" | "blo
 
   const sent = await sendEmail({
     to: email,
-    subject: `O teu código: ${code} — Tarzan's Barbershop`,
+    subject: `O teu código Tarzan's Barbershop: ${code}`,
     html: `<div style="font-family:Arial,sans-serif;color:#1a1712">
 <p style="font-size:16px">O teu código para entrares na tua conta Tarzan's Barbershop é:</p>
 <p style="font-size:32px;font-weight:bold;letter-spacing:6px">${code}</p>

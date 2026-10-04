@@ -125,7 +125,7 @@ export async function createBookingRequest(input: BookingRequestInput): Promise<
         `Cliente: ${client.name}\n` +
         `Telefone: ${client.phone}\n` +
         `Email: ${client.email}\n` +
-        `Serviço: ${combo.name} (${combo.durationMin}min — ${price}€)\n` +
+        `Serviço: ${combo.name} (${combo.durationMin} min, ${price}€)\n` +
         (notes ? `Notas: ${notes}\n` : "") +
         `\nID: ${booking.id}`,
       location: locationPretty,

@@ -64,7 +64,7 @@ export function ExpressSlot({
           em <strong>{city}</strong>?
         </p>
         <p className="mt-2 text-sm text-muted">
-          {formatPriceShort(priceEur)} · Fica pendente até ser confirmada — recebes um email nessa altura.
+          {formatPriceShort(priceEur)} · Fica pendente até ser confirmada e recebes um email nessa altura.
         </p>
       </ConfirmDialog>
     </>

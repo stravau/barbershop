@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { ogFonts } from "@/lib/og-fonts"
 import { formatPriceShort, getServiceItem } from "@/lib/services"
 
-export const alt = "Tarzan's Barbershop — barbeiro independente em Setúbal e Lisboa"
+export const alt = "Tarzan's Barbershop, barbeiro independente em Setúbal e Lisboa"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 

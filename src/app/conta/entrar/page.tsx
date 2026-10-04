@@ -32,8 +32,8 @@ export default async function EntrarPage({ searchParams }: PageProps) {
       back={{ href: "/" }}
       intro={
         toBook
-          ? "Para marcares, entra com o teu email — enviamos-te um código. É a primeira vez? A conta fica criada já, e a seguir continuas a marcação."
-          : "Sem palavras-passe: escreve o teu email e enviamos-te um código. Se ainda não tens conta, fica criada já."
+          ? "Entra com o teu email para continuar a marcação. Enviamos-te um código e, se ainda não tiveres conta, criamo-la nesse momento."
+          : "Não precisas de palavra-passe: escreve o teu email e enviamos-te um código para entrar. Se ainda não tiveres conta, é criada automaticamente."
       }
     >
       <form action={requestLoginCode} className="space-y-4">

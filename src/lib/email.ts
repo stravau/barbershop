@@ -174,7 +174,7 @@ export function adminBookingEmail(booking: BookingForEmail): {
   const confirmUrl = `${site}/api/admin/bookings/${booking.id}/confirm?token=${booking.adminToken}`
   const rejectUrl = `${site}/api/admin/bookings/${booking.id}/reject?token=${booking.adminToken}`
 
-  const subject = `Nova marcação pendente — ${booking.serviceName} ${booking.whenLocal}`
+  const subject = `Nova marcação pendente: ${booking.serviceName}, ${booking.whenLocal}`
   const html = `<!DOCTYPE html>
 <html><body style="${baseStyle}">
   <div style="max-width:600px;margin:0 auto;">
@@ -221,14 +221,14 @@ export function clientReceivedEmail(booking: BookingForEmail): {
   const waMessage = `Olá! Fiz uma marcação para ${booking.serviceName} no dia ${booking.whenLocal}, em ${booking.location}. Obrigado!`
   const waButton = whatsappButtonHtml(waMessage)
 
-  const subject = `Pedido de marcação recebido — Tarzan's Barbershop`
+  const subject = `Tarzan's Barbershop: recebemos o teu pedido`
   const html = `<!DOCTYPE html>
 <html><body style="${baseStyle}">
   <div style="max-width:600px;margin:0 auto;">
     ${headerHtml}
     <div style="${cardStyle}">
       <p style="margin:0 0 12px 0;font-size:16px;">Olá, <strong>${escape(booking.clientName)}</strong>!</p>
-      <p style="margin:0 0 12px 0;font-size:16px;line-height:1.5;">Recebemos o teu pedido de marcação. Assim que for confirmado — normalmente em poucas horas — recebes outro email com a confirmação e a localização.</p>
+      <p style="margin:0 0 12px 0;font-size:16px;line-height:1.5;">Recebemos o teu pedido de marcação. Assim que for confirmado (costuma demorar poucas horas), recebes outro email com a confirmação e a localização.</p>
 
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;">
         ${detailRow("Serviço", booking.serviceName)}
@@ -246,7 +246,7 @@ export function clientReceivedEmail(booking: BookingForEmail): {
       </div>
 
       <div style="margin-top:24px;padding-top:18px;border-top:1px solid #d2c4a9;font-size:12px;color:${MUTED};line-height:1.6;">
-        Guarda este email — o link acima mostra o estado da marcação a qualquer altura. Se este email foi parar ao spam, marca-o como &ldquo;não é spam&rdquo; para receberes a confirmação.
+        Guarda este email. O link acima mostra o estado da marcação a qualquer altura. Se este email foi parar ao spam, marca-o como &ldquo;não é spam&rdquo; para receberes a confirmação.
       </div>
     </div>
     ${footerHtml}
@@ -265,7 +265,7 @@ export function clientConfirmedEmail(booking: BookingForEmail): {
   const gcalUrl = calendarUrl(booking)
   const map = booking.address ? mapsUrl(booking.address, booking.location) : null
 
-  const subject = `Marcação confirmada — Tarzan's Barbershop`
+  const subject = `Tarzan's Barbershop: marcação confirmada`
   const html = `<!DOCTYPE html>
 <html><body style="${baseStyle}">
   <div style="max-width:600px;margin:0 auto;">
@@ -279,7 +279,7 @@ export function clientConfirmedEmail(booking: BookingForEmail): {
         ${detailRow("Quando", booking.whenLocal)}
         ${detailRow("Serviço", `${booking.serviceName} (${booking.durationMin} min)`)}
         ${whereRow(booking)}
-        ${detailRow("Pagamento", `${priceFormat(booking.priceEur)} no fim — MB WAY ou dinheiro`)}
+        ${detailRow("Pagamento", `${priceFormat(booking.priceEur)} no fim, em MB WAY ou dinheiro`)}
       </table>
 
       <div style="text-align:center;">
@@ -311,7 +311,7 @@ export function clientReminderEmail(booking: BookingForEmail): {
   const gcalUrl = calendarUrl(booking)
   const map = booking.address ? mapsUrl(booking.address, booking.location) : null
 
-  const subject = `Lembrete: marcação amanhã — Tarzan's Barbershop`
+  const subject = `Lembrete: tens marcação amanhã na Tarzan's Barbershop`
   const html = `<!DOCTYPE html>
 <html><body style="${baseStyle}">
   <div style="max-width:600px;margin:0 auto;">
@@ -335,7 +335,7 @@ export function clientReminderEmail(booking: BookingForEmail): {
       </div>
 
       <div style="margin-top:24px;padding-top:18px;border-top:1px solid #d2c4a9;font-size:12px;color:${MUTED};line-height:1.6;">
-        Se já não puderes vir, cancela agora pelo botão acima — assim outra pessoa pode ficar com a hora.
+        Se já não puderes vir, cancela agora pelo botão acima. Assim outra pessoa pode ficar com a hora.
       </div>
     </div>
     ${footerHtml}
@@ -346,7 +346,7 @@ export function clientReminderEmail(booking: BookingForEmail): {
 
 function calendarUrl(booking: BookingForEmail): string {
   return gcalAddUrl({
-    title: `Tarzan's Barbershop — ${booking.serviceName}`,
+    title: `Tarzan's Barbershop: ${booking.serviceName}`,
     start: booking.startUtc,
     end: booking.endUtc,
     details: `${booking.serviceName} (${booking.durationMin} min · ${priceFormat(booking.priceEur)})\nID: ${booking.id}`,
@@ -362,7 +362,7 @@ export function clientCancelledEmail(booking: BookingForEmail): {
   html: string
 } {
   const site = getSiteUrl()
-  const subject = `Marcação cancelada — Tarzan's Barbershop`
+  const subject = `Tarzan's Barbershop: marcação cancelada`
   const html = `<!DOCTYPE html>
 <html><body style="${baseStyle}">
   <div style="max-width:600px;margin:0 auto;">
@@ -392,7 +392,7 @@ export function adminCancelledByClientEmail(booking: BookingForEmail): {
   subject: string
   html: string
 } {
-  const subject = `Cliente cancelou — ${booking.serviceName} ${booking.whenLocal}`
+  const subject = `Cliente cancelou: ${booking.serviceName}, ${booking.whenLocal}`
   const html = `<!DOCTYPE html>
 <html><body style="${baseStyle}">
   <div style="max-width:600px;margin:0 auto;">

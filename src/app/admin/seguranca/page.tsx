@@ -52,7 +52,7 @@ export default async function SegurancaPage({ searchParams }: PageProps) {
     sp.terminadas !== undefined
       ? `${sp.terminadas} ${sp.terminadas === "1" ? "sessão terminada" : "sessões terminadas"}.`
       : sp.esquecidos !== undefined
-        ? "Dispositivos esquecidos — a próxima entrada em cada um pede o código."
+        ? "Dispositivos esquecidos. A próxima entrada em cada um vai pedir o código."
         : null
 
   return (

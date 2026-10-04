@@ -78,15 +78,15 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const cancellations = booking.client.bookings.filter((b) => b.status === "CANCELLED").length
 
   const notice = confirmed
-    ? { tone: "success" as const, text: `Marcação confirmada${booking.email ? ` — email enviado para ${booking.email}` : ""}.` }
+    ? { tone: "success" as const, text: `Marcação confirmada.${booking.email ? ` Email enviado para ${booking.email}.` : ""}` }
     : rejected
-      ? { tone: "danger" as const, text: `Marcação cancelada${booking.email ? ` — email enviado para ${booking.email}` : ""}.` }
+      ? { tone: "danger" as const, text: `Marcação cancelada.${booking.email ? ` Email enviado para ${booking.email}.` : ""}` }
       : already
-        ? { tone: "muted" as const, text: "Esta marcação já tinha sido tratada — nada mudou." }
+        ? { tone: "muted" as const, text: "Esta marcação já tinha sido tratada, não mudou nada." }
         : sp.saved === "1"
           ? { tone: "success" as const, text: "Alterações guardadas." }
           : sp.saved === "invalid"
-            ? { tone: "danger" as const, text: "Gorjeta inválida — escreve só o valor, por exemplo 10 ou 2,50." }
+            ? { tone: "danger" as const, text: "Gorjeta inválida. Escreve só o valor, por exemplo 10 ou 2,50." }
             : null
 
   return (

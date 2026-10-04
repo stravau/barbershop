@@ -33,8 +33,8 @@ export default async function RegistoPage({ searchParams }: PageProps) {
       back={{ href: "/", fixed: true }}
       intro={
         <>
-          Entraste como <strong>{current.session.email}</strong>. Falta o nome e o
-          telemóvel — se já marcaste antes com este número, juntamos o teu histórico.
+          Entraste como <strong>{current.session.email}</strong>. Falta só o nome e o
+          telemóvel. Se já marcaste antes com este número, juntamos o teu histórico.
         </>
       }
     >

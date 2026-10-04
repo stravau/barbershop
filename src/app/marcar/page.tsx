@@ -234,7 +234,7 @@ function ServicesStep({
     <div>
       <StepTitle>Que serviços queres?</StepTitle>
       <p className="mb-5 text-muted">
-        Podes escolher mais do que um — os combos saem mais baratos.
+        Podes escolher mais do que um. Os combos saem mais baratos.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -423,7 +423,7 @@ function WhenStep({
       {location && activeDate && (
         <>
           <FieldLabel className="mt-7">
-            Hora — {formatLisbon(noonUtc(activeDate), "EEEE, dd 'de' MMMM")}
+            Horas livres: {formatLisbon(noonUtc(activeDate), "EEEE, dd 'de' MMMM")}
           </FieldLabel>
           <DaySlots
             key={`${location}|${activeDate}`}
@@ -664,7 +664,7 @@ function DetailsStep({
         </Field>
         {fromAccount && (
           <p className="-mt-1 text-xs text-muted">
-            Dados da tua conta — para os mudares, vai a{" "}
+            Dados da tua conta. Para os mudares, vai a{" "}
             <a href="/conta/dados" className="link">
               Os meus dados
             </a>
@@ -804,8 +804,8 @@ function SuccessStep({
         {cityName(payload.location)}
       </p>
       <p className="mx-auto mt-6 max-w-md text-ink/80">
-        A marcação fica <strong>pendente</strong> até ser confirmada —
-        normalmente em poucas horas. Vais receber a confirmação por email, com
+        A marcação fica <strong>pendente</strong> até ser confirmada, o que
+        costuma demorar poucas horas. Vais receber a confirmação por email, com
         a localização.
       </p>
       <p className="mx-auto mt-3 max-w-md text-sm text-muted">

@@ -93,7 +93,7 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
                 : "À espera de confirmação"}
         </h1>
         <p className="mt-4 text-lg text-ink/80">
-          {isConfirmed && `Obrigado pela confiança — até ${whenForCopy}.`}
+          {isConfirmed && `Obrigado pela confiança. Até ${whenForCopy}!`}
           {isPending &&
             "Ainda não está confirmada. Assim que for, recebes um email com a confirmação e a localização."}
           {isCancelled &&

@@ -31,10 +31,10 @@ const cutPrice = formatPriceShort(getServiceItem("corte")?.priceEur ?? 0)
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "Tarzan's Barbershop — Barbeiro em Setúbal e Lisboa",
+    default: "Tarzan's Barbershop · Barbeiro em Setúbal e Lisboa",
     template: "%s · Tarzan's Barbershop",
   },
-  description: `Barbeiro em Setúbal e Lisboa. Corte a ${cutPrice}, barba, sobrancelha e combos — marca online em menos de um minuto.`,
+  description: `Barbeiro em Setúbal e Lisboa. Corte a ${cutPrice}, barba, sobrancelha e combos. Marca online em menos de um minuto.`,
 }
 
 export default function RootLayout({

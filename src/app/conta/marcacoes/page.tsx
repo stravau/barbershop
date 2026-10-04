@@ -45,7 +45,7 @@ export default async function MarcacoesPage({ searchParams }: PageProps) {
     <ContaShell name={client.name} active="/conta/marcacoes">
       {sp.pedido && (
         <Notice tone="ok">
-          Pedido enviado! Fica pendente até ser confirmado — recebes um email nessa altura.
+          Pedido enviado! Fica pendente até ser confirmado e recebes um email nessa altura.
         </Notice>
       )}
 

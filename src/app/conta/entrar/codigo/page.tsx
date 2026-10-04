@@ -31,7 +31,7 @@ export default async function CodigoPage({ searchParams }: PageProps) {
       intro={
         <>
           Enviámos um código de 6 dígitos para <strong>{email}</strong>. É válido
-          durante 10 minutos — vê também o spam.
+          durante 10 minutos. Se não o encontrares, vê também no spam.
         </>
       }
     >

@@ -59,11 +59,10 @@ export default async function ContaPage({ searchParams }: PageProps) {
             </p>
             {hasUpcoming && (
               <p className="mt-2 text-sm text-muted">
-                Já tens uma marcação agendada —{" "}
+                Já tens uma marcação agendada.{" "}
                 <Link href="/conta/marcacoes" className="link">
-                  vê aqui
+                  Ver marcação
                 </Link>
-                .
               </p>
             )}
             {suggestions.length > 0 ? (
@@ -86,8 +85,8 @@ export default async function ContaPage({ searchParams }: PageProps) {
               <p className="mt-5 text-ink/80">Não há horários livres nas próximas 3 semanas.</p>
             )}
             <p className="mt-4 text-xs text-muted">
-              Escolhe uma hora e confirma. Fica pendente até ser confirmada — recebes um email
-              com a morada nessa altura.
+              Escolhe uma hora e confirma. Fica pendente até ser confirmada e, nessa altura,
+              recebes um email com a morada.
             </p>
           </>
         ) : (
@@ -140,7 +139,7 @@ function LoyaltyCard({ visits }: { visits: number }) {
       </ol>
       <p className="mt-4 text-sm text-ink/80">
         {visits >= 6
-          ? "Cartão completo — já usaste o teu corte grátis."
+          ? "Cartão completo! Já usaste o teu corte grátis."
           : visits === 5
             ? "O próximo corte é grátis."
             : `Faltam ${5 - visits} ${5 - visits === 1 ? "visita" : "visitas"} para o corte grátis.`}

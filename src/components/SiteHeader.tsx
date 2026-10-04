@@ -40,7 +40,7 @@ export function SiteHeader() {
         {/* In the admin the logo goes back to the agenda */}
         <Link
           href={isAdmin ? "/admin" : "/"}
-          aria-label={isAdmin ? "Tarzan's Barbershop — agenda" : "Tarzan's Barbershop — início"}
+          aria-label={isAdmin ? "Tarzan's Barbershop: ir para a agenda" : "Tarzan's Barbershop: página inicial"}
           // Signed-in client on a phone: menu on the left, logo on the right
           className={`flex shrink-0 items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem] ${signedIn ? "max-md:order-last" : ""}`}
         >

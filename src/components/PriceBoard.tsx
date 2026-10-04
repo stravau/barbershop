@@ -21,7 +21,7 @@ export function PriceBoard({ showTitle = true }: { showTitle?: boolean }) {
           <h3 className="mb-1 text-center text-3xl text-yellow sm:text-4xl">Preços</h3>
         )}
         <p className="caps text-center text-xs text-paper/60">
-          ★ Pagas no fim — MB WAY ou dinheiro ★
+          ★ Pagas no fim, em MB WAY ou dinheiro ★
         </p>
 
         <ul className="mt-6 space-y-1">

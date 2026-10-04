@@ -239,8 +239,8 @@ function LoyaltyCard() {
         <div className="mt-6 grid items-start gap-12 md:grid-cols-2">
           <div>
             <p className="max-w-md text-lg leading-relaxed text-ink/80">
-              Na primeira visita recebes o cartão de cliente. Cada corte vale
-              um carimbo — ao sexto, não pagas.
+              Recebes o cartão de cliente na primeira visita e cada corte vale
+              um carimbo. Junta cinco e o sexto fica de oferta.
             </p>
             <p className="mt-3 text-sm text-muted">Válido apenas para o primeiro cartão.</p>
           </div>

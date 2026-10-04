@@ -25,7 +25,7 @@ export async function createManualBooking(
   form: FormData,
 ): Promise<ManualBookingState> {
   if (!(await isAdmin())) {
-    return { error: "Sessão expirada — faz login outra vez." }
+    return { error: "A sessão expirou. Faz login outra vez." }
   }
 
   const name = String(form.get("name") ?? "").trim()
@@ -99,7 +99,7 @@ export async function createManualBooking(
           `Cliente: ${name}\n` +
           (phone ? `Telefone: ${phone}\n` : "") +
           (email ? `Email: ${email}\n` : "") +
-          `Serviço: ${combo.name} (${combo.durationMin}min — ${fixedPriceFor(name) ?? combo.priceEur}€)\n` +
+          `Serviço: ${combo.name} (${combo.durationMin} min, ${fixedPriceFor(name) ?? combo.priceEur}€)\n` +
           (notes ? `Notas: ${notes}\n` : "") +
           `\nMarcação registada no admin. ID: ${booking.id}`,
         location: location === "lisboa" ? "Lisboa" : "Setúbal",

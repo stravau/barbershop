@@ -7,7 +7,7 @@ interface PageProps {
 const ERRORS: Record<string, (left?: string) => string> = {
   wrong: (left) =>
     left === "0"
-      ? "Palavra-passe incorreta. Demasiadas tentativas — espera 15 minutos."
+      ? "Palavra-passe incorreta. Demasiadas tentativas, espera 15 minutos."
       : `Palavra-passe incorreta.${left ? ` Restam ${left} tentativas.` : ""}`,
   blocked: () => "Demasiadas tentativas falhadas. Espera 15 minutos e tenta outra vez.",
   expired: () => "O código expirou ou já foi usado. Entra outra vez com a palavra-passe.",
