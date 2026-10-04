@@ -9,8 +9,9 @@ import { cn } from "@/lib/utils"
 import { ContactLinks } from "../../_components/ContactLinks"
 import { FlashBanner } from "../../_components/FlashBanner"
 import { DeleteBookingButton } from "./DeleteBookingButton"
+import { updateBooking } from "./actions"
 import { CityTag, StatusPill } from "../../_components/ui"
-import { isDone } from "../../_lib"
+import { isDone, received } from "../../_lib"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -82,7 +83,11 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
       ? { tone: "danger" as const, text: `Marcação cancelada${booking.email ? ` — email enviado para ${booking.email}` : ""}.` }
       : already
         ? { tone: "muted" as const, text: "Esta marcação já tinha sido tratada — nada mudou." }
-        : null
+        : sp.saved === "1"
+          ? { tone: "success" as const, text: "Alterações guardadas." }
+          : sp.saved === "invalid"
+            ? { tone: "danger" as const, text: "Gorjeta inválida — escreve só o valor, por exemplo 10 ou 2,50." }
+            : null
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -101,7 +106,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           <FlashBanner
             text={notice.text}
             tone={notice.tone}
-            clearParams={["confirmed", "rejected", "already"]}
+            clearParams={["confirmed", "rejected", "already", "saved"]}
           />
         )}
 
@@ -116,6 +121,12 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </p>
           <p className="text-muted">
             {booking.durationMin} min · {formatPrice(booking.servicePrice)}
+            {booking.tipEur > 0 && (
+              <>
+                {" "}+ {formatPrice(booking.tipEur)} gorjeta ={" "}
+                <strong className="text-ink">{formatPrice(received(booking))}</strong>
+              </>
+            )}
           </p>
 
           {(isPending || (isConfirmed && !isPast)) && !confirmed && !rejected && (
@@ -160,6 +171,34 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
               </p>
             )}
           </div>
+
+          <form action={updateBooking} className="mt-7 border-t-2 border-ink pt-5">
+            <div className="caps mb-2 text-xs text-muted">Editar</div>
+            <input type="hidden" name="id" value={booking.id} />
+            <input type="hidden" name="token" value={booking.adminToken} />
+            <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
+              <label className="block">
+                <span className="mb-1 block text-sm font-semibold">Gorjeta</span>
+                <span className="relative block">
+                  <input
+                    name="tip"
+                    inputMode="decimal"
+                    defaultValue={booking.tipEur > 0 ? String(booking.tipEur).replace(".", ",") : ""}
+                    placeholder="0"
+                    className="input pr-8"
+                  />
+                  <span className="absolute top-1/2 right-3 -translate-y-1/2 text-muted">€</span>
+                </span>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-semibold">Notas</span>
+                <input name="notes" defaultValue={booking.notes ?? ""} className="input" />
+              </label>
+            </div>
+            <button type="submit" className="btn btn-sm mt-3">
+              Guardar
+            </button>
+          </form>
 
           <div className="mt-7 border-t border-ink/15 pt-4">
             <DeleteBookingButton id={booking.id} token={booking.adminToken} />

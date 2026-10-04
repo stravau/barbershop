@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { formatPrice, formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
 
 const STATUS: Record<string, { label: string; className: string }> = {
@@ -19,6 +20,31 @@ export function StatusPill({ status, done }: { status: string; done?: boolean })
       )}
     >
       {cfg.label}
+    </span>
+  )
+}
+
+/** Service price, plus a small green "+5 €" when a tip was recorded. */
+export function PriceWithTip({
+  price,
+  tip,
+  className,
+}: {
+  price: number
+  tip: number
+  className?: string
+}) {
+  return (
+    <span className={cn("whitespace-nowrap tabular-nums", className)}>
+      {formatPrice(price)}
+      {tip > 0 && (
+        <span
+          title="Gorjeta"
+          className="ml-1 rounded bg-success/10 px-1 text-xs font-semibold text-success"
+        >
+          +{formatPriceShort(tip)}
+        </span>
+      )}
     </span>
   )
 }

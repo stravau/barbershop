@@ -3,7 +3,7 @@ import { formatPrice } from "@/lib/services"
 import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
 import type { Prisma } from "@/generated/prisma"
 import { SectionTitle, Stat } from "../_components/ui"
-import { BOOKED_STATUSES, cityName, groupBy } from "../_lib"
+import { BOOKED_STATUSES, cityName, groupBy, received } from "../_lib"
 import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
@@ -34,7 +34,7 @@ export default async function NumerosPage() {
     status: booked,
     startUtc: { gte: now, lt: to },
   })
-  const sumOf = { _sum: { servicePrice: true }, _count: true } as const
+  const sumOf = { _sum: { servicePrice: true, tipEur: true }, _count: true } as const
 
   const [
     today,
@@ -62,14 +62,14 @@ export default async function NumerosPage() {
     prisma.booking.aggregate({ where: aheadUntil(p.monthEnd), ...sumOf }),
     prisma.booking.findMany({
       where: doneIn(sixMonthsAgo),
-      select: { startUtc: true, servicePrice: true },
+      select: { startUtc: true, servicePrice: true, tipEur: true },
       orderBy: { startUtc: "asc" },
     }),
     prisma.booking.groupBy({
       by: ["location"],
       where: doneIn(p.yearStart, p.yearEnd),
       _count: true,
-      _sum: { servicePrice: true },
+      _sum: { servicePrice: true, tipEur: true },
     }),
     prisma.booking.groupBy({
       by: ["serviceName"],
@@ -107,14 +107,18 @@ export default async function NumerosPage() {
       key,
       label: formatLisbon(items[0].startUtc, "MMMM"),
       count: items.length,
-      total: items.reduce((s, b) => s + b.servicePrice, 0),
+      total: items.reduce((s, b) => s + received(b), 0),
     }),
   )
   const maxMonth = Math.max(1, ...months.map((mo) => mo.total))
 
   const monthTotal = cancelledMonth + bookedMonth
   const cancelRate = monthTotal > 0 ? Math.round((cancelledMonth / monthTotal) * 100) : 0
-  const money = (a: { _sum: { servicePrice: number | null } }) => formatPrice(a._sum.servicePrice ?? 0)
+  // Received = service prices + tips
+  type Sums = { _sum: { servicePrice: number | null; tipEur?: number | null } }
+  const money = (a: Sums) => formatPrice((a._sum.servicePrice ?? 0) + (a._sum.tipEur ?? 0))
+  const tips = (a: Sums) =>
+    (a._sum.tipEur ?? 0) > 0 ? <><br />inclui {formatPrice(a._sum.tipEur ?? 0)} gorjetas</> : null
   const cuts = (a: { _count: number }) => `${a._count} ${a._count === 1 ? "marcação" : "marcações"}`
 
   return (
@@ -123,20 +127,20 @@ export default async function NumerosPage() {
       <section className="mb-10">
         <SectionTitle aside="Só marcações que já aconteceram">Faturado</SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <Stat label="Hoje" value={money(today)} sub={cuts(today)} />
+          <Stat label="Hoje" value={money(today)} sub={<>{cuts(today)}{tips(today)}</>} />
           <Stat
             label="Esta semana"
             value={money(week)}
-            sub={<>{cuts(week)}<br />+ {money(weekAhead)} previsto</>}
+            sub={<>{cuts(week)}{tips(week)}<br />+ {money(weekAhead)} previsto</>}
           />
           <Stat
             label={formatLisbon(now, "MMMM")}
             value={money(month)}
-            sub={<>{cuts(month)}<br />+ {money(monthAhead)} previsto</>}
+            sub={<>{cuts(month)}{tips(month)}<br />+ {money(monthAhead)} previsto</>}
             highlight
           />
-          <Stat label={`Ano ${y}`} value={money(year)} sub={cuts(year)} />
-          <Stat label="Desde sempre" value={money(allTime)} sub={cuts(allTime)} />
+          <Stat label={`Ano ${y}`} value={money(year)} sub={<>{cuts(year)}{tips(year)}</>} />
+          <Stat label="Desde sempre" value={money(allTime)} sub={<>{cuts(allTime)}{tips(allTime)}</>} />
         </div>
       </section>
 
@@ -172,7 +176,7 @@ export default async function NumerosPage() {
             rows={byCity.map((r) => ({
               label: cityName(r.location),
               count: r._count,
-              total: r._sum.servicePrice ?? 0,
+              total: (r._sum.servicePrice ?? 0) + (r._sum.tipEur ?? 0),
             }))}
           />
         </section>
