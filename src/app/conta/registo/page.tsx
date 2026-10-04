@@ -28,6 +28,7 @@ export default async function RegistoPage({ searchParams }: PageProps) {
   return (
     <AuthCard
       title="Quase lá"
+      back={{ href: "/", fixed: true }}
       intro={
         <>
           Entraste como <strong>{current.session.email}</strong>. Falta o nome e o

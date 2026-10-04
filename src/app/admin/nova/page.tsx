@@ -1,5 +1,4 @@
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { BackLink } from "@/components/BackLink"
 import { lisbonPeriods } from "@/lib/tz"
 import { ManualBookingForm } from "./ManualBookingForm"
 import { requireAdmin } from "@/lib/admin-auth"
@@ -12,12 +11,7 @@ export default async function NovaMarcacaoPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <Link
-          href="/admin"
-          className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink"
-        >
-          <ArrowLeft className="h-4 w-4" /> Agenda
-        </Link>
+        <BackLink href="/admin" />
         <h1 className="text-3xl">Nova marcação</h1>
         <p className="mt-2 mb-8 text-muted">
           Para marcações combinadas fora do site — por WhatsApp, telefone ou ao

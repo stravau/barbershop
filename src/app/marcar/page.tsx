@@ -24,6 +24,7 @@ import {
 } from "@/lib/services"
 import { formatLisbon } from "@/lib/tz"
 import { whatsappUrl } from "@/lib/site"
+import { BackLink } from "@/components/BackLink"
 import { cn } from "@/lib/utils"
 
 type Step = "services" | "when" | "details" | "confirm" | "success"
@@ -109,6 +110,8 @@ function MarcarFlow() {
     <main>
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="mb-8">
+          {/* Later steps have their own "Voltar" (to the previous step) */}
+          {step === "services" && <BackLink href="/" />}
           <h1 className="print-shadow text-5xl sm:text-6xl">Marcar</h1>
           {step !== "success" && <StepProgress step={step} />}
         </div>

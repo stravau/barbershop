@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { BackLink } from "@/components/BackLink"
 import { formatLisbon } from "@/lib/tz"
 import { currentAdminSession, requireAdmin } from "@/lib/admin-auth"
 import { cn } from "@/lib/utils"
@@ -57,6 +58,7 @@ export default async function SegurancaPage({ searchParams }: PageProps) {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-3xl">
+        <BackLink href="/admin" />
         <h1 className="text-3xl">Segurança</h1>
         <p className="mt-2 mb-6 text-muted">
           Quem tem o admin aberto, os dispositivos que não pedem código e as

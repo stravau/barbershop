@@ -7,6 +7,7 @@ import { formatPrice } from "@/lib/services"
 import { getLocationAddress, mapsUrl } from "@/lib/addresses"
 import { whatsappUrl } from "@/lib/site"
 import { cn } from "@/lib/utils"
+import { BackLink } from "@/components/BackLink"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -63,6 +64,7 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-16">
+      <BackLink href="/" />
       <div className="mb-8">
         <span
           className={cn(

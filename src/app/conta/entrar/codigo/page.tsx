@@ -24,6 +24,7 @@ export default async function CodigoPage({ searchParams }: PageProps) {
   return (
     <AuthCard
       title="Código"
+      back={{ href: `/conta/entrar?email=${encodeURIComponent(email)}`, fixed: true }}
       intro={
         <>
           Enviámos um código de 6 dígitos para <strong>{email}</strong>. É válido

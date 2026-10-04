@@ -1,4 +1,5 @@
 import { MailCheck } from "lucide-react"
+import { BackLink } from "@/components/BackLink"
 
 interface PageProps {
   searchParams: Promise<{ error?: string; next?: string }>
@@ -10,7 +11,8 @@ export default async function AdminCodePage({ searchParams }: PageProps) {
   const next = sp.next ?? "/admin"
 
   return (
-    <main className="mx-auto max-w-md px-4 py-20">
+    <main className="mx-auto max-w-md px-4 py-12 sm:py-16">
+      <BackLink href={`/admin/login?next=${encodeURIComponent(next)}`} fixed />
       <div className="mb-8 text-center">
         <MailCheck className="mx-auto mb-3 h-10 w-10 text-accent" />
         <h1 className="text-3xl">Código de acesso</h1>

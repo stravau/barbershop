@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { BackLink } from "@/components/BackLink"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
@@ -94,12 +94,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
 
       <div className="mx-auto max-w-2xl">
         {hasSession && (
-          <Link
-            href="/admin"
-            className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink"
-          >
-            <ArrowLeft className="h-4 w-4" /> Agenda
-          </Link>
+          <BackLink href="/admin" />
         )}
 
         {notice && (

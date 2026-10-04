@@ -25,6 +25,7 @@ export default async function EntrarPage({ searchParams }: PageProps) {
   return (
     <AuthCard
       title="Entrar"
+      back={{ href: "/" }}
       intro="Sem palavras-passe: escreve o teu email e enviamos-te um código. Se ainda não tens conta, fica criada já."
     >
       <form action={requestLoginCode} className="space-y-4">

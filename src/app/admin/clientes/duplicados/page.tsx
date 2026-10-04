@@ -1,5 +1,4 @@
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { BackLink } from "@/components/BackLink"
 import {
   findDuplicates,
   loadClientSummaries,
@@ -41,12 +40,7 @@ export default async function DuplicadosPage({ searchParams }: PageProps) {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-3xl">
-        <Link
-          href="/admin/clientes"
-          className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink"
-        >
-          <ArrowLeft className="h-4 w-4" /> Clientes
-        </Link>
+        <BackLink href="/admin/clientes" />
         <h1 className="text-3xl">Clientes repetidos</h1>
         <p className="mt-2 mb-6 text-muted">
           Ao juntar, as marcações passam todas para um só cliente, que fica com

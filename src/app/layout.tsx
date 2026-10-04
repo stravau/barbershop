@@ -1,8 +1,10 @@
+import { Suspense } from "react"
 import type { Metadata } from "next"
 import { Alfa_Slab_One, Archivo, Yellowtail } from "next/font/google"
 import "./globals.css"
 import { SiteHeader } from "@/components/SiteHeader"
 import { SiteFooter } from "@/components/SiteFooter"
+import { TopLoader } from "@/components/TopLoader"
 import { getServiceItem, formatPriceShort } from "@/lib/services"
 import { getSiteUrl } from "@/lib/site"
 
@@ -44,6 +46,10 @@ export default function RootLayout({
       className={`${slab.variable} ${archivo.variable} ${yellowtail.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* useSearchParams inside needs a Suspense boundary */}
+        <Suspense fallback={null}>
+          <TopLoader />
+        </Suspense>
         <SiteHeader />
         <div className="flex-1">{children}</div>
         <SiteFooter />

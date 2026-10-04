@@ -233,3 +233,13 @@
     transform: none;
   }
 }
+
+/* Top loading bar (components/TopLoader.tsx) */
+@keyframes toploader-grow {
+  from {
+    width: 0;
+  }
+  to {
+    width: 85%;
+  }
+}
