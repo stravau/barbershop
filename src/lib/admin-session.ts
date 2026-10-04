@@ -49,7 +49,8 @@ export function timingSafeEqualStr(a: string, b: string): boolean {
   return diff === 0
 }
 
-async function sign(kind: string, id: string, ttlMs: number): Promise<string | null> {
+/** Signs "<id>.<expires>" for a given purpose (kind); null without ADMIN_SECRET. */
+export async function sign(kind: string, id: string, ttlMs: number): Promise<string | null> {
   const secret = adminSecret()
   if (!secret) return null
   const expires = Date.now() + ttlMs
@@ -57,7 +58,7 @@ async function sign(kind: string, id: string, ttlMs: number): Promise<string | n
 }
 
 /** Returns the id inside a signed value if the signature and expiry are good. */
-async function verify(kind: string, value: string | undefined | null): Promise<string | null> {
+export async function verify(kind: string, value: string | undefined | null): Promise<string | null> {
   const secret = adminSecret()
   if (!secret || !value) return null
   const [id, expiresStr, sig] = value.split(".")

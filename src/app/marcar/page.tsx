@@ -586,6 +586,19 @@ function DetailsStep({
   const [notes, setNotes] = useState(initial.notes)
   const [err, setErr] = useState<string | null>(null)
 
+  // Signed-in clients: fill in what's still empty from their account
+  useEffect(() => {
+    fetch("/api/conta/sessao", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((s: { signedIn: boolean; name?: string; phone?: string; email?: string }) => {
+        if (!s.signedIn) return
+        setName((v) => v || s.name || "")
+        setPhone((v) => v || (s.phone?.startsWith("351") ? s.phone.slice(3) : s.phone) || "")
+        setEmail((v) => v || s.email || "")
+      })
+      .catch(() => {})
+  }, [])
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const cleanPhone = phone.replace(/[^\d]/g, "")

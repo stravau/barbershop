@@ -42,16 +42,31 @@ export async function requestInfo(): Promise<{ ip: string; userAgent: string | n
 
 // ---------- rate limiting ----------
 
-export async function failedAttemptsLeft(ip: string): Promise<number> {
+/** Admin and client logins are limited separately (one can't lock out the other). */
+const SCOPE_STAGES = {
+  admin: ["password", "code"],
+  client: ["client-email", "client-code"],
+} as const
+export type AttemptStage = (typeof SCOPE_STAGES)[keyof typeof SCOPE_STAGES][number]
+
+export async function failedAttemptsLeft(
+  ip: string,
+  scope: keyof typeof SCOPE_STAGES = "admin",
+): Promise<number> {
   const fails = await prisma.loginAttempt.count({
-    where: { ip, success: false, createdAt: { gte: new Date(Date.now() - ATTEMPT_WINDOW_MS) } },
+    where: {
+      ip,
+      success: false,
+      stage: { in: [...SCOPE_STAGES[scope]] },
+      createdAt: { gte: new Date(Date.now() - ATTEMPT_WINDOW_MS) },
+    },
   })
   return Math.max(0, MAX_FAILED_ATTEMPTS - fails)
 }
 
 export async function recordAttempt(
   ip: string,
-  stage: "password" | "code",
+  stage: AttemptStage,
   success: boolean,
   userAgent: string | null,
 ): Promise<void> {

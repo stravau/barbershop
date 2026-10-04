@@ -24,6 +24,9 @@ model Client {
   phone         String    @unique
   email         String?
   loyaltyCount  Int       @default(0) // increments on COMPLETED, every 6th = free
+  // Set by the client in their account area
+  preferredLocation String? // "lisboa" | "setubal"
+  standingNote      String? // shown on every booking of theirs in the admin
   createdAt     DateTime  @default(now())
   bookings      Booking[]
 
@@ -117,4 +120,32 @@ model TrustedDevice {
   expiresAt DateTime
   revokedAt DateTime?
   userAgent String?
+}
+
+// ---------- Client accounts (passwordless: a code sent by email) ----------
+
+model ClientLoginCode {
+  id        String    @id @default(cuid())
+  email     String
+  codeHash  String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+
+  @@index([email, createdAt])
+}
+
+// A signed-in client. clientId is null until they finish registering
+// (name + phone) — until then the session only knows the email.
+model ClientSession {
+  id         String    @id @default(cuid())
+  email      String
+  clientId   String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([clientId])
 }

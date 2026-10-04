@@ -153,6 +153,12 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             {booking.notes && (
               <p className="mt-4 rounded-md bg-yellow/25 px-3 py-2 italic">“{booking.notes}”</p>
             )}
+            {booking.client.standingNote && (
+              <p className="mt-3 rounded-md border border-ink/15 px-3 py-2 text-sm">
+                <span className="caps mr-1.5 text-xs text-muted">Nota do cliente</span>
+                {booking.client.standingNote}
+              </p>
+            )}
           </div>
 
           <div className="mt-7 border-t border-ink/15 pt-4">

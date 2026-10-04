@@ -38,7 +38,10 @@ export default async function SegurancaPage({ searchParams }: PageProps) {
       where: { revokedAt: null, expiresAt: { gt: now } },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.loginAttempt.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
+    prisma.loginAttempt.findMany({
+      // Client sign-ins have their own stages; this page is about the admin
+      where: { stage: { in: ["password", "code"] } },
+      orderBy: { createdAt: "desc" }, take: 30 }),
   ])
   const failedLast24h = attempts.filter(
     (a) => !a.success && now.getTime() - a.createdAt.getTime() < 864e5,

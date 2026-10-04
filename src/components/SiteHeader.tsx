@@ -4,18 +4,23 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { AdminHeaderNav } from "@/components/AdminHeaderNav"
+import { HeaderAccount, useHeaderSession } from "@/components/HeaderAccount"
 import { InstagramIcon } from "@/components/InstagramIcon"
 import { Wordmark } from "@/components/Wordmark"
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
 
+// A signed-in client's header also carries the account link and "Terminar
+// sessão", so the other links need wider screens
 const NAV = [
-  { href: "/servicos", label: "Preços", className: "hidden min-[380px]:inline" },
-  { href: "/#horario", label: "Horário", className: "hidden sm:inline" },
+  { href: "/servicos", label: "Preços", className: "hidden min-[380px]:inline", signedIn: "hidden min-[420px]:inline" },
+  { href: "/#horario", label: "Horário", className: "hidden sm:inline", signedIn: "hidden md:inline" },
 ] as const
 
 export function SiteHeader() {
   const pathname = usePathname()
   const isAdmin = pathname.startsWith("/admin")
+  const [session, setSession] = useHeaderSession(pathname)
+  const signedIn = !isAdmin && !!session?.signedIn
 
   return (
     <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
@@ -36,8 +41,8 @@ export function SiteHeader() {
               className="origin-[50%_45%] scale-[1.4] object-cover"
             />
           </span>
-          {/* On admin pages the tabs need the room on phones */}
-          <span className={isAdmin ? "hidden sm:inline-flex" : "inline-flex"}>
+          {/* On admin pages (and for signed-in clients) the buttons need the room on phones */}
+          <span className={isAdmin || signedIn ? "hidden sm:inline-flex" : "inline-flex"}>
             <Wordmark />
           </span>
         </Link>
@@ -50,7 +55,7 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className={`nav-link caps text-[0.95rem] ${item.className}`}
+              className={`nav-link caps text-[0.95rem] ${signedIn ? item.signedIn : item.className}`}
               data-active={pathname === item.href}
             >
               {item.label}
@@ -62,15 +67,15 @@ export function SiteHeader() {
             rel="noopener"
             aria-label={`Instagram @${INSTAGRAM_HANDLE}`}
             title={`Segue-nos no Instagram @${INSTAGRAM_HANDLE}`}
-            className="grid h-9 w-9 place-items-center rounded-md transition hover:bg-paper-dark"
+            className="hidden h-9 w-9 place-items-center rounded-md transition hover:bg-paper-dark min-[380px]:grid"
           >
             <InstagramIcon className="h-6 w-6" />
           </a>
-          {pathname !== "/marcar" && (
-            <Link href="/marcar" className="btn btn-sm">
-              Marcar
-            </Link>
-          )}
+          <HeaderAccount
+            pathname={pathname}
+            session={isAdmin ? null : session}
+            onLogout={() => setSession({ signedIn: false })}
+          />
         </nav>
         )}
       </div>
