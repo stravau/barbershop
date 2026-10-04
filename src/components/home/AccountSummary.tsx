@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import Link from "next/link"
 import { useFormStatus } from "react-dom"
-import { ArrowRight, Zap } from "lucide-react"
+import { ArrowRight, CalendarCheck, Zap } from "lucide-react"
 import { expressBook } from "@/app/conta/actions"
 import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
@@ -29,113 +29,83 @@ const useSignedIn = () => {
   return s?.signedIn ? s : null
 }
 
-type SignedIn = Extract<AccountSummary, { signedIn: true }>
 
-/** Top of the home page for a signed-in client: next booking + express booking. */
-export function AccountSection() {
-  const s = useSignedIn()
-  if (!s) return null
+/** Full-width bar right under the header with the client's next booking. */
+export function NextBookingBar() {
+  const next = useSignedIn()?.next
+  if (!next) return null
 
   return (
-    <section className="border-b-2 border-ink bg-paper-dark">
-      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 md:py-6">
-        <p className="caps text-xs text-muted">
-          A tua área
-          {/* Phones already greet in the header */}
-          <span className="hidden md:inline"> · Olá, {s.firstName}</span>
-        </p>
-        <div className="mt-3 grid gap-3 md:grid-cols-[2fr_3fr] md:gap-4">
-          <NextBooking next={s.next} />
-          <Express express={s.express} />
-        </div>
-      </div>
-    </section>
-  )
-}
-
-const card = "rounded-lg border-2 border-ink bg-card p-4 shadow-[3px_3px_0_var(--ink)]"
-
-function NextBooking({ next }: { next: SignedIn["next"] }) {
-  return (
-    <div className={cn(card, "flex flex-col")}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="caps text-xs text-muted">Próxima marcação</p>
-        {next && (
+    <Link
+      href="/conta/marcacoes"
+      className="group block border-b-2 border-ink bg-jungle text-paper"
+      aria-label={`Próxima marcação: ${next.day} às ${next.time}. Ver as minhas marcações`}
+    >
+      <div className="mx-auto flex max-w-6xl items-center gap-x-3 px-4 py-2.5 text-sm sm:px-6">
+        <CalendarCheck className="h-5 w-5 shrink-0 text-yellow" aria-hidden="true" />
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5">
+          <span className="caps hidden text-xs text-paper/70 sm:inline">Próxima marcação</span>
+          <span className="font-display text-base">
+            <span className="sm:hidden">{next.short}</span>
+            <span className="hidden sm:inline">{next.day}</span> · <span className="tabular-nums">{next.time}</span>
+          </span>
+          <span className="hidden text-paper/80 md:inline">
+            {next.serviceName} · {formatPriceShort(next.priceEur)} · {next.city}
+          </span>
           <span
             className={cn(
-              "caps shrink-0 rounded-full border-2 border-ink px-2 py-px text-[0.65rem]",
-              next.status === "CONFIRMED" ? "bg-success text-paper" : "bg-yellow",
+              "caps rounded-full border-2 px-2 py-px text-[0.65rem]",
+              next.status === "CONFIRMED" ? "border-paper bg-success" : "border-ink bg-yellow text-ink",
             )}
           >
             {next.status === "CONFIRMED" ? "Confirmada" : "Pendente"}
           </span>
-        )}
+        </div>
+        <span className="flex shrink-0 items-center gap-1 font-semibold group-hover:underline">
+          <span className="hidden sm:inline">Ver marcações</span>
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </span>
       </div>
-      {next ? (
-        <>
-          <p className="font-display mt-1.5 text-lg leading-snug">
-            {next.day} · <span className="tabular-nums">{next.time}</span>
-          </p>
-          <p className="text-sm text-ink/80">
-            {next.serviceName} · {formatPriceShort(next.priceEur)} · {next.city}
-          </p>
-        </>
-      ) : (
-        <p className="mt-1.5 text-sm text-ink/80">Nada marcado.</p>
-      )}
-      <Link href="/conta/marcacoes" className="link mt-auto inline-flex items-center gap-1 self-start pt-2 text-sm font-semibold">
-        {next ? "Ver marcações" : "Histórico"} <ArrowRight className="h-3.5 w-3.5" />
-      </Link>
-    </div>
+    </Link>
   )
 }
 
-function Express({ express }: { express: SignedIn["express"] }) {
+/**
+ * Hero: the main "Marcar corte" button and, for clients with a history,
+ * their usual booking at the next free times right under it (one tap each).
+ */
+export function HeroCta() {
+  const express = useSignedIn()?.express
   return (
-    <div className={card}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <h3 className="flex items-center gap-1.5 text-lg">
-          <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
-          Marcação express
-        </h3>
-        {express && (
-          <p className="text-sm text-ink/80">
-            {express.serviceName} · {formatPriceShort(express.priceEur)} · {express.city}
-          </p>
-        )}
-      </div>
-      {express ? (
-        <>
-          {express.slots.length > 0 ? (
-            <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {express.slots.map((slot) => (
-                <li key={slot.startIso}>
-                  <form action={expressBook}>
-                    <input type="hidden" name="startIso" value={slot.startIso} />
-                    <SlotButton short={slot.short} day={slot.day} time={slot.time} />
-                  </form>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-sm text-ink/80">Não há horários livres nas próximas 3 semanas.</p>
-          )}
-          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-            <p className="text-xs text-muted">Um toque faz o pedido · fica pendente até ser confirmado.</p>
-            <Link href="/marcar" className="link text-sm font-semibold">
-              Outro serviço ou hora
-            </Link>
+    <>
+      <Link href="/marcar" className="btn w-full text-lg">
+        Marcar corte <ArrowRight className="h-5 w-5" />
+      </Link>
+      {express && express.slots.length > 0 && (
+        <div className="mt-4 w-full rounded-lg border-2 border-ink bg-card p-3 text-left shadow-[3px_3px_0_var(--ink)]">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+            <p className="font-display flex items-center gap-1.5">
+              <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
+              Marcação express
+            </p>
+            <p className="text-xs text-ink/70">
+              {express.serviceName} · {formatPriceShort(express.priceEur)} · {express.city}
+            </p>
           </div>
-        </>
-      ) : (
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-ink/80">Depois da primeira visita, as tuas horas habituais aparecem aqui.</p>
-          <Link href="/marcar" className="btn btn-sm">
-            Fazer marcação
-          </Link>
+          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {express.slots.map((slot) => (
+              <li key={slot.startIso}>
+                <form action={expressBook}>
+                  <input type="hidden" name="startIso" value={slot.startIso} />
+                  <SlotButton short={slot.short} day={slot.day} time={slot.time} />
+                </form>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">Um toque faz o pedido · fica pendente até ser confirmado.</p>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -147,25 +117,11 @@ function SlotButton({ short, day, time }: { short: string; day: string; time: st
       type="submit"
       disabled={pending}
       aria-label={`Marcar ${day} às ${time}`}
-      className="w-full rounded-md border-2 border-ink bg-paper px-2 py-1.5 text-center transition hover:bg-yellow disabled:opacity-60"
+      className="w-full rounded-md border-2 border-ink bg-paper px-1.5 py-1 text-center transition hover:bg-yellow disabled:opacity-60"
     >
       <span className="block text-xs text-ink/80">{short}</span>
       <span className="font-display block text-lg leading-tight tabular-nums">{pending ? "…" : time}</span>
     </button>
-  )
-}
-
-/** Hero button: "Marcação express" for clients with a history, else "Marcar corte". */
-export function HeroCta() {
-  const s = useSignedIn()
-  return s?.express ? (
-    <Link href="/conta" className="btn w-full text-lg">
-      <Zap className="h-5 w-5 fill-ink" aria-hidden="true" /> Marcação express
-    </Link>
-  ) : (
-    <Link href="/marcar" className="btn w-full text-lg">
-      Marcar corte <ArrowRight className="h-5 w-5" />
-    </Link>
   )
 }
 

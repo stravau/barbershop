@@ -2,7 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { InstagramIcon } from "@/components/InstagramIcon"
-import { AccountSection, AccountSummaryProvider, HeroCta } from "@/components/home/AccountSummary"
+import { NextBookingBar, AccountSummaryProvider, HeroCta } from "@/components/home/AccountSummary"
 import { StampCard } from "@/components/home/StampCard"
 import { PriceBoard } from "@/components/PriceBoard"
 import { LOCATIONS, groupedWeeklyHours } from "@/lib/schedule"
@@ -14,7 +14,7 @@ const TAGLINE = "Corte, barba e sobrancelha."
 export default function HomePage() {
   return (
     <AccountSummaryProvider>
-      <AccountSection />
+      <NextBookingBar />
       <Hero />
       <InstagramBand />
       <PricesAndHowItWorks />

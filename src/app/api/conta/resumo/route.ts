@@ -14,6 +14,7 @@ export type AccountSummary =
       /** Next pending/confirmed booking */
       next: {
         day: string
+        short: string
         time: string
         status: "PENDING" | "CONFIRMED"
         serviceName: string
@@ -68,6 +69,7 @@ export async function GET() {
     next: upcoming
       ? {
           day: day(upcoming.startUtc),
+          short: short(upcoming.startUtc),
           time: time(upcoming.startUtc),
           status: upcoming.status as "PENDING" | "CONFIRMED",
           serviceName: upcoming.serviceName,
