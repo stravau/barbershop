@@ -1,9 +1,8 @@
 "use server"
 
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
+import { requireAdmin } from "@/lib/admin-auth"
 import { deleteEvent } from "@/lib/gcal"
 
 /**
@@ -12,10 +11,7 @@ import { deleteEvent } from "@/lib/gcal"
  * from Google Calendar.
  */
 export async function deleteClient(form: FormData): Promise<void> {
-  const cookieStore = await cookies()
-  if (!(await isSessionValid(cookieStore.get(SESSION_COOKIE_NAME)?.value))) {
-    redirect("/admin/login?next=/admin/clientes")
-  }
+  await requireAdmin("/admin/clientes")
 
   const id = String(form.get("id") ?? "")
   const client = await prisma.client.findUnique({

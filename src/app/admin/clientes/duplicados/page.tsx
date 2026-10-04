@@ -13,6 +13,7 @@ import { FlashBanner } from "../../_components/FlashBanner"
 import { Empty, SectionTitle } from "../../_components/ui"
 import { prisma } from "@/lib/prisma"
 import { mergeAllSure, mergeGroup } from "./actions"
+import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -22,6 +23,7 @@ interface PageProps {
 
 /** Clients registered more than once, ready to be merged. */
 export default async function DuplicadosPage({ searchParams }: PageProps) {
+  await requireAdmin("/admin/clientes/duplicados")
   const sp = await searchParams
   const summaries = await loadClientSummaries(prisma)
   const { sure, probable } = findDuplicates(summaries)

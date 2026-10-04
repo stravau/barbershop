@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { cookies } from "next/headers"
 import { ArrowLeft } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
-import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
+import { emailLinkStillValid, isAdmin } from "@/lib/admin-auth"
 import { cn } from "@/lib/utils"
 import { ContactLinks } from "../../_components/ContactLinks"
 import { FlashBanner } from "../../_components/FlashBanner"
@@ -32,9 +31,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const already = sp.already === "1"
 
   // Auth: either a valid admin session cookie OR a matching adminToken in URL
-  const cookieStore = await cookies()
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
-  const hasSession = await isSessionValid(sessionCookie)
+  const hasSession = await isAdmin()
 
   if (error) {
     return (
@@ -50,7 +47,9 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   })
 
   if (!booking) notFound()
-  const tokenMatches = token && booking.adminToken === token
+  // Email links stop working a few days after the booking
+  const tokenMatches =
+    token && booking.adminToken === token && emailLinkStillValid(booking.startUtc)
   if (!hasSession && !tokenMatches) {
     return (
       <Message

@@ -4,6 +4,7 @@ import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
 import type { Prisma } from "@/generated/prisma"
 import { SectionTitle, Stat } from "../_components/ui"
 import { BOOKED_STATUSES, cityName, groupBy } from "../_lib"
+import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic"
  * All periods follow Lisbon time.
  */
 export default async function NumerosPage() {
+  await requireAdmin("/admin/dashboard")
   const now = new Date()
   const p = lisbonPeriods(now)
   const [y, m] = p.today.split("-").map(Number)

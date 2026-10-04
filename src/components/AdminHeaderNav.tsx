@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { LogOut } from "lucide-react"
+import { LogOut, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const TABS = [
@@ -58,6 +58,17 @@ export function AdminHeaderNav({ pathname }: { pathname: string }) {
           )
         })}
       </nav>
+      <Link
+        href="/admin/seguranca"
+        title="Segurança"
+        aria-current={pathname.startsWith("/admin/seguranca") ? "page" : undefined}
+        className={cn(
+          "mb-3 inline-flex shrink-0 items-center transition hover:text-ink",
+          pathname.startsWith("/admin/seguranca") ? "text-ink" : "text-muted",
+        )}
+      >
+        <ShieldCheck className="h-4 w-4" />
+      </Link>
       <a
         href="/api/admin/auth/logout"
         title="Sair"

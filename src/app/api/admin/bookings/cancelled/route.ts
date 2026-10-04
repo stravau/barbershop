@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
+import { SESSION_COOKIE_NAME } from "@/lib/admin-session"
+import { sessionFromCookie } from "@/lib/admin-auth"
 
 /**
  * DELETE /api/admin/bookings/cancelled
@@ -11,7 +12,7 @@ import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
  */
 export async function DELETE(req: NextRequest) {
   const cookie = req.cookies.get(SESSION_COOKIE_NAME)?.value
-  if (!(await isSessionValid(cookie))) {
+  if (!(await sessionFromCookie(cookie))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

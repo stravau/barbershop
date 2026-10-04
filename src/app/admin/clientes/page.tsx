@@ -11,6 +11,7 @@ import { DeleteClientButton } from "./DeleteClientButton"
 import { Empty, FilterChips, Stat } from "../_components/ui"
 import { isDone } from "../_lib"
 import { findDuplicates } from "@/lib/clients"
+import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -26,6 +27,7 @@ interface PageProps {
  * bookings made on the site (a past confirmed booking counts as a visit).
  */
 export default async function ClientesPage({ searchParams }: PageProps) {
+  await requireAdmin("/admin/clientes")
   const sp = await searchParams
   const q = (sp.q ?? "").trim()
   const order: Order = ORDERS.includes(sp.ordem as Order) ? (sp.ordem as Order) : "recentes"

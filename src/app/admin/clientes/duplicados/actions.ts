@@ -1,9 +1,8 @@
 "use server"
 
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
+import { requireAdmin } from "@/lib/admin-auth"
 import {
   findDuplicates,
   loadClientSummaries,
@@ -14,10 +13,7 @@ import {
 const PAGE = "/admin/clientes/duplicados"
 
 async function requireSession(): Promise<void> {
-  const cookieStore = await cookies()
-  if (!(await isSessionValid(cookieStore.get(SESSION_COOKIE_NAME)?.value))) {
-    redirect(`/admin/login?next=${encodeURIComponent(PAGE)}`)
-  }
+  await requireAdmin(PAGE)
 }
 
 /** Merge one group; the first id is the client that stays. */

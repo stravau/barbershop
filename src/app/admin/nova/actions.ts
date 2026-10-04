@@ -1,10 +1,9 @@
 "use server"
 
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { addMinutes } from "date-fns"
 import { prisma } from "@/lib/prisma"
-import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
+import { isAdmin } from "@/lib/admin-auth"
 import { buildCombo, validateSelection } from "@/lib/services"
 import { getWorkingHours, type LocationId } from "@/lib/schedule"
 import { combineDateTimeLisbon, getLisbonDayOfWeek } from "@/lib/tz"
@@ -24,8 +23,7 @@ export async function createManualBooking(
   _prev: ManualBookingState,
   form: FormData,
 ): Promise<ManualBookingState> {
-  const cookieStore = await cookies()
-  if (!(await isSessionValid(cookieStore.get(SESSION_COOKIE_NAME)?.value))) {
+  if (!(await isAdmin())) {
     return { error: "Sessão expirada — faz login outra vez." }
   }
 

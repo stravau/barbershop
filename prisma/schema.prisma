@@ -71,3 +71,50 @@ model Booking {
   @@index([location, startUtc])
   @@index([status])
 }
+
+// ---------- Admin security ----------
+
+// One row per admin login. The cookie carries the id (HMAC-signed); revoking
+// the row ends that session even though the cookie itself is still valid.
+model AdminSession {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ip         String?
+  userAgent  String?
+}
+
+// Every password/code attempt — used for rate limiting and the login log.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  ip        String
+  stage     String // "password" | "code"
+  success   Boolean
+  userAgent String?
+
+  @@index([ip, createdAt])
+  @@index([createdAt])
+}
+
+// One-time code emailed to the admin after the password (second factor).
+model AdminLoginCode {
+  id        String    @id @default(cuid())
+  codeHash  String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+}
+
+// "Lembrar este dispositivo": skips the emailed code until it expires.
+model TrustedDevice {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+}

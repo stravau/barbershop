@@ -2,11 +2,13 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { lisbonPeriods } from "@/lib/tz"
 import { ManualBookingForm } from "./ManualBookingForm"
+import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
 /** Register a booking arranged outside the site (WhatsApp, phone, walk-in). */
-export default function NovaMarcacaoPage() {
+export default async function NovaMarcacaoPage() {
+  await requireAdmin("/admin/nova")
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-3xl">

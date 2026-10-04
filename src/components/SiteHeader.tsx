@@ -43,7 +43,7 @@ export function SiteHeader() {
         </Link>
 
         {isAdmin ? (
-          pathname !== "/admin/login" && <AdminHeaderNav pathname={pathname} />
+          !pathname.startsWith("/admin/login") && <AdminHeaderNav pathname={pathname} />
         ) : (
         <nav className="flex items-center gap-3 sm:gap-6">
           {NAV.map((item) => (

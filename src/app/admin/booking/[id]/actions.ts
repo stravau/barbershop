@@ -1,9 +1,8 @@
 "use server"
 
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
+import { emailLinkStillValid, isAdmin } from "@/lib/admin-auth"
 import { deleteEvent } from "@/lib/gcal"
 import { formatLisbon } from "@/lib/tz"
 
@@ -19,11 +18,10 @@ export async function deleteBooking(form: FormData): Promise<void> {
   const booking = await prisma.booking.findUnique({ where: { id } })
   if (!booking) redirect("/admin?flash=error&code=not-found")
 
-  const cookieStore = await cookies()
-  const hasSession = await isSessionValid(cookieStore.get(SESSION_COOKIE_NAME)?.value)
-  if (!hasSession && booking.adminToken !== token) {
-    redirect("/admin?flash=error&code=invalid-token")
-  }
+  // Admin session, or the email link's token while it's still valid
+  const allowed =
+    (await isAdmin()) || (booking.adminToken === token && emailLinkStillValid(booking.startUtc))
+  if (!allowed) redirect("/admin?flash=error&code=invalid-token")
 
   // Remove it from Google Calendar too (best effort)
   if (booking.gcalEventId) {

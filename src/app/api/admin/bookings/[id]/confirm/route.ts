@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { emailLinkStillValid, isAdmin } from "@/lib/admin-auth"
 import { formatLisbon } from "@/lib/tz"
 import { sendEmail, clientConfirmedEmail, getSiteUrl } from "@/lib/email"
 import { updateEvent } from "@/lib/gcal"
@@ -46,7 +47,10 @@ export async function GET(
   if (!booking) {
     return redirectTo(errorUrl("not-found"))
   }
-  if (booking.adminToken !== token) {
+  // From the admin (signed in) always OK; from an email link only while the
+  // link is still valid (until a few days after the booking)
+  const viaAdmin = await isAdmin()
+  if (!viaAdmin && (booking.adminToken !== token || !emailLinkStillValid(booking.startUtc))) {
     return redirectTo(errorUrl("invalid-token"))
   }
 

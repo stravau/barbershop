@@ -7,6 +7,7 @@ import type { Prisma } from "@/generated/prisma"
 import { DeleteCancelledButton } from "../_components/DeleteCancelledButton"
 import { CityTag, Empty, FilterChips, StatusPill } from "../_components/ui"
 import { BOOKED_STATUSES, bookingHref, groupBy, isDone, parseCity } from "../_lib"
+import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -19,6 +20,7 @@ interface PageProps {
 
 /** Past appointments and every cancellation, newest first, grouped by month. */
 export default async function HistoricoPage({ searchParams }: PageProps) {
+  await requireAdmin("/admin/historico")
   const sp = await searchParams
   const state: State = STATES.includes(sp.estado as State) ? (sp.estado as State) : "todas"
   const city = parseCity(sp.cidade)

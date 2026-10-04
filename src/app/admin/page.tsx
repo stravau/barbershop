@@ -17,6 +17,7 @@ import {
   relativeDay,
   type BookingWithClient,
 } from "./_lib"
+import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -42,6 +43,7 @@ interface PageProps {
  * calendar of the agenda with the selected day's full list beside it.
  */
 export default async function AgendaPage({ searchParams }: PageProps) {
+  await requireAdmin("/admin")
   const sp = await searchParams
   const city = parseCity(sp.cidade)
   const byCity = city ? { location: city } : {}
