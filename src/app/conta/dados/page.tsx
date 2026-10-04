@@ -2,7 +2,8 @@ import type { Metadata } from "next"
 import { requireClient } from "@/lib/client-auth"
 import { Card, ContaShell, Notice } from "../_components/ContaShell"
 import { ConfirmForm } from "../_components/ConfirmSubmit"
-import { deleteAccount, logout, updateDetails } from "../actions"
+import { LogoutButton } from "@/components/LogoutButton"
+import { deleteAccount, updateDetails } from "../actions"
 
 export const metadata: Metadata = { title: "Os meus dados", robots: "noindex" }
 export const dynamic = "force-dynamic"
@@ -78,11 +79,7 @@ export default async function DadosPage({ searchParams }: PageProps) {
       </Card>
 
       <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t-2 border-ink pt-6">
-        <form action={logout}>
-          <button type="submit" className="btn-ghost px-3 py-1.5 text-sm">
-            Terminar sessão
-          </button>
-        </form>
+        <LogoutButton className="btn-ghost px-3 py-1.5 text-sm">Terminar sessão</LogoutButton>
         <ConfirmForm
           action={deleteAccount}
           warning="Apagar a tua conta? As marcações futuras são canceladas e os teus dados apagados. Não dá para desfazer."

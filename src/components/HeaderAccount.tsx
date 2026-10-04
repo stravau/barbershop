@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { UserRound } from "lucide-react"
-import { logout } from "@/app/conta/actions"
+import { LogoutButton } from "@/components/LogoutButton"
 import { SignupHint, retireSignupHint } from "@/components/SignupHint"
 
 export type HeaderSession = { signedIn: false } | { signedIn: true; name: string }
@@ -64,11 +64,9 @@ export function HeaderAccount({
         <UserRound className="h-5 w-5" aria-hidden="true" />
         <span className="hidden lg:inline">Conta</span>
       </Link>
-      <form action={logout} onSubmit={onLogout}>
-        <button type="submit" className="btn btn-sm whitespace-nowrap">
-          Terminar sessão
-        </button>
-      </form>
+      <LogoutButton onLoggedOut={onLogout} className="btn btn-sm whitespace-nowrap">
+        Terminar sessão
+      </LogoutButton>
     </>
   )
 }

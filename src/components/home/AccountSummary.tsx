@@ -2,9 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react"
 import Link from "next/link"
-import { useFormStatus } from "react-dom"
 import { ArrowRight, CalendarCheck, ChevronDown, Zap } from "lucide-react"
-import { expressBook } from "@/app/conta/actions"
+import { ExpressSlot } from "@/components/ExpressSlot"
 import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
 import type { AccountSummary } from "@/app/api/conta/resumo/route"
@@ -152,34 +151,24 @@ function ExpressBox({ express }: { express: Express }) {
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {express.slots.map((slot) => (
                 <li key={slot.startIso}>
-                  <form action={expressBook}>
-                    <input type="hidden" name="startIso" value={slot.startIso} />
-                    <SlotButton short={slot.short} day={slot.day} time={slot.time} />
-                  </form>
+                  <ExpressSlot
+                    variant="compact"
+                    startIso={slot.startIso}
+                    day={slot.day}
+                    short={slot.short}
+                    time={slot.time}
+                    serviceName={express.serviceName}
+                    priceEur={express.priceEur}
+                    city={express.city}
+                  />
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-xs text-muted">Um toque faz o pedido · fica pendente até ser confirmado.</p>
+            <p className="mt-2 text-xs text-muted">Escolhe uma hora e confirma · fica pendente até ser confirmada.</p>
           </div>
         </div>
       </div>
     </div>
-  )
-}
-
-/** One express time: "Seg 05/10" over "13:00"; disabled while its request is sent. */
-function SlotButton({ short, day, time }: { short: string; day: string; time: string }) {
-  const { pending } = useFormStatus()
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      aria-label={`Marcar ${day} às ${time}`}
-      className="w-full rounded-md border-2 border-ink bg-paper px-1.5 py-1 text-center transition hover:bg-yellow disabled:opacity-60"
-    >
-      <span className="block text-xs text-ink/80">{short}</span>
-      <span className="font-display block text-lg leading-tight tabular-nums">{pending ? "…" : time}</span>
-    </button>
   )
 }
 

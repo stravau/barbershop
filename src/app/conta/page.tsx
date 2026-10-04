@@ -8,8 +8,7 @@ import { formatPrice } from "@/lib/services"
 import { formatLisbon } from "@/lib/tz"
 import { isDone } from "@/app/admin/_lib"
 import { Card, ContaShell, Notice } from "./_components/ContaShell"
-import { SubmitSlotButton } from "./_components/SubmitSlotButton"
-import { expressBook } from "./actions"
+import { ExpressSlot } from "@/components/ExpressSlot"
 
 export const metadata: Metadata = { title: "A minha conta", robots: "noindex" }
 export const dynamic = "force-dynamic"
@@ -71,13 +70,15 @@ export default async function ContaPage({ searchParams }: PageProps) {
               <ul className="mt-5 grid gap-3 sm:grid-cols-2">
                 {suggestions.map((s) => (
                   <li key={s.startIso}>
-                    <form action={expressBook}>
-                      <input type="hidden" name="startIso" value={s.startIso} />
-                      <SubmitSlotButton
-                        day={formatLisbon(new Date(s.startIso), "EEEE, dd 'de' MMMM")}
-                        time={formatLisbon(new Date(s.startIso), "HH:mm")}
-                      />
-                    </form>
+                    <ExpressSlot
+                      variant="wide"
+                      startIso={s.startIso}
+                      day={formatLisbon(new Date(s.startIso), "EEEE, dd 'de' MMMM").replace("-feira", "")}
+                      time={formatLisbon(new Date(s.startIso), "HH:mm")}
+                      serviceName={habit.serviceName}
+                      priceEur={habit.priceEur}
+                      city={habit.location === "lisboa" ? "Lisboa" : "Setúbal"}
+                    />
                   </li>
                 ))}
               </ul>
@@ -85,8 +86,8 @@ export default async function ContaPage({ searchParams }: PageProps) {
               <p className="mt-5 text-ink/80">Não há horários livres nas próximas 3 semanas.</p>
             )}
             <p className="mt-4 text-xs text-muted">
-              Um toque envia o pedido. Fica pendente até ser confirmado — recebes um email com
-              a morada nessa altura.
+              Escolhe uma hora e confirma. Fica pendente até ser confirmada — recebes um email
+              com a morada nessa altura.
             </p>
           </>
         ) : (

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import Link from "next/link"
 import { CalendarPlus, Clock, LogOut, Tag, UserRound, X } from "lucide-react"
 import { InstagramIcon } from "@/components/InstagramIcon"
-import { logout } from "@/app/conta/actions"
+import { LogoutButton } from "@/components/LogoutButton"
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
 import { cn } from "@/lib/utils"
 
@@ -41,7 +41,8 @@ export function ClientMenu({
   // Esc closes; the page behind doesn't scroll while it's open
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    // (not while a confirmation pop-up is open on top of the menu)
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector("dialog[open]") && onClose()
     document.addEventListener("keydown", onKey)
     const overflow = document.documentElement.style.overflow
     document.documentElement.style.overflow = "hidden"
@@ -141,19 +142,18 @@ export function ClientMenu({
                 <InstagramIcon className="h-5 w-5" />@{INSTAGRAM_HANDLE}
               </a>
             </div>
-            <form
-              {...item()}
-              action={logout}
-              onSubmit={() => {
-                onLogout()
-                onClose()
-              }}
-            >
-              <button type="submit" className={cn(row, "w-full text-[0.95rem] font-semibold text-danger")}>
+            <div {...item()}>
+              <LogoutButton
+                onLoggedOut={() => {
+                  onLogout()
+                  onClose()
+                }}
+                className={cn(row, "w-full text-[0.95rem] font-semibold text-danger")}
+              >
                 <LogOut className="h-5 w-5" aria-hidden="true" />
                 Terminar sessão
-              </button>
-            </form>
+              </LogoutButton>
+            </div>
           </div>
         </nav>
       </div>
