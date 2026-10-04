@@ -19,7 +19,7 @@ const SECONDARY = [
 ]
 
 /**
- * Phone menu for a signed-in client: a panel that slides in from the right.
+ * Phone menu for a signed-in client: a panel that slides in from the left (where the menu button is).
  * Account and booking on top, site info below, Instagram and "Terminar
  * sessão" at the bottom. Closes on a link, the backdrop, Esc or navigation.
  */
@@ -60,7 +60,7 @@ export function ClientMenu({
   const item = () => ({
     className: cn(
       "transition duration-300 ease-out motion-reduce:transition-none",
-      open ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0",
+      open ? "translate-x-0 opacity-100" : "-translate-x-6 opacity-0",
     ),
     style: { transitionDelay: open ? `${80 + i++ * 40}ms` : "0ms" },
   })
@@ -82,8 +82,8 @@ export function ClientMenu({
         aria-modal="true"
         aria-label="Área de cliente"
         className={cn(
-          "absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col border-l-2 border-ink bg-paper shadow-[-6px_0_0_var(--ink)] transition-transform duration-300 ease-out motion-reduce:transition-none",
-          open ? "translate-x-0" : "translate-x-[calc(100%+8px)]",
+          "absolute inset-y-0 left-0 flex w-[min(20rem,85vw)] flex-col border-r-2 border-ink bg-paper shadow-[6px_0_0_var(--ink)] transition-transform duration-300 ease-out motion-reduce:transition-none",
+          open ? "translate-x-0" : "-translate-x-[calc(100%+8px)]",
         )}
       >
         <div className="flex items-center justify-between gap-3 border-b-2 border-ink px-5 py-4">

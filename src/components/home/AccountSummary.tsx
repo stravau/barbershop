@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import Link from "next/link"
 import { useFormStatus } from "react-dom"
-import { ArrowRight, CalendarCheck, Zap } from "lucide-react"
+import { ArrowRight, CalendarCheck, ChevronDown, Zap } from "lucide-react"
 import { expressBook } from "@/app/conta/actions"
 import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
@@ -96,31 +96,74 @@ export function HeroCta() {
           </p>
         </div>
       )}
-      {express && express.slots.length > 0 && (
-        <div className="mt-4 w-full rounded-lg border-2 border-ink bg-card p-3 text-left shadow-[3px_3px_0_var(--ink)] [contain:inline-size]">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-            <p className="font-display flex items-center gap-1.5">
-              <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
-              Marcação express
-            </p>
-            <p className="text-xs text-ink/70">
-              {express.serviceName} · {formatPriceShort(express.priceEur)} · {express.city}
-            </p>
-          </div>
-          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {express.slots.map((slot) => (
-              <li key={slot.startIso}>
-                <form action={expressBook}>
-                  <input type="hidden" name="startIso" value={slot.startIso} />
-                  <SlotButton short={slot.short} day={slot.day} time={slot.time} />
-                </form>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-muted">Um toque faz o pedido · fica pendente até ser confirmado.</p>
-        </div>
-      )}
+      {express && express.slots.length > 0 && <ExpressBox express={express} />}
     </>
+  )
+}
+
+type Express = NonNullable<Extract<AccountSummary, { signedIn: true }>["express"]>
+
+/**
+ * The usual booking and its next free times. On phones it starts closed,
+ * showing just the usual booking; a tap slides the times open. Always open
+ * from sm up.
+ */
+function ExpressBox({ express }: { express: Express }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mt-4 w-full rounded-lg border-2 border-ink bg-card text-left shadow-[3px_3px_0_var(--ink)] [contain:inline-size]">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls="express-slots"
+        className="flex w-full items-center justify-between gap-3 p-3 text-left sm:pointer-events-none sm:pb-0"
+      >
+        <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3">
+          <span className="font-display flex items-center gap-1.5">
+            <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
+            Marcação express
+          </span>
+          <span className="text-xs text-ink/70">
+            {express.serviceName} · {formatPriceShort(express.priceEur)} · {express.city}
+          </span>
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className={cn("h-5 w-5 shrink-0 transition-transform duration-300 sm:hidden", open && "rotate-180")}
+        />
+      </button>
+      {/* grid-rows 0fr → 1fr animates the height to fit the content */}
+      <div
+        id="express-slots"
+        className={cn(
+          "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none sm:grid-rows-[1fr]",
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        {/* Hidden times can't be tabbed to on phones; visibility flips after the slide */}
+        <div
+          className={cn(
+            "overflow-hidden transition-[visibility] duration-300",
+            open ? "visible" : "invisible sm:visible",
+          )}
+        >
+          <div className="px-3 pt-2 pb-3">
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {express.slots.map((slot) => (
+                <li key={slot.startIso}>
+                  <form action={expressBook}>
+                    <input type="hidden" name="startIso" value={slot.startIso} />
+                    <SlotButton short={slot.short} day={slot.day} time={slot.time} />
+                  </form>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-muted">Um toque faz o pedido · fica pendente até ser confirmado.</p>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

@@ -20,7 +20,7 @@ export function ContaShell({
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
       <p className="caps text-sm text-muted">A tua conta</p>
-      <h1 className="print-shadow mt-1 text-4xl sm:text-5xl">Olá, {name.split(" ")[0]}</h1>
+      <h1 className="print-shadow mt-1 text-4xl sm:text-5xl">Olá, {name.split(" ")[0]}!</h1>
       <nav className="mt-6 flex gap-1 overflow-x-auto border-b-2 border-ink">
         {TABS.map((t) => (
           <Link

@@ -40,7 +40,8 @@ export function SiteHeader() {
         <Link
           href="/"
           aria-label="Tarzan's Barbershop — início"
-          className="flex shrink-0 items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem]"
+          // Signed-in client on a phone: menu on the left, logo on the right
+          className={`flex shrink-0 items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem] ${signedIn ? "max-md:order-last" : ""}`}
         >
           {/* The logo cut out of its black background (public/logo-mark.png) */}
           <Image
@@ -64,12 +65,12 @@ export function SiteHeader() {
         <>
         {signedIn && session?.signedIn && (
           <>
-            {/* Phones: greeting in the middle, everything else in the side menu.
-                The menu button is as wide as the logo so the greeting is centred. */}
+            {/* Phones: menu button left, greeting in the middle, logo right.
+                The button's box is as wide as the logo so the greeting is centred. */}
             <p className="font-display min-w-0 flex-1 truncate text-center text-lg md:hidden">
-              Olá, {session.name.split(" ")[0]}
+              Olá, {session.name.split(" ")[0]}!
             </p>
-            <div className="flex w-[51px] shrink-0 justify-end md:hidden">
+            <div className="order-first flex w-[51px] shrink-0 justify-start md:hidden">
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
