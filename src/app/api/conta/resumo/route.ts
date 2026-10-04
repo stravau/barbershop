@@ -25,7 +25,7 @@ export type AccountSummary =
         serviceName: string
         priceEur: number
         city: string
-        slots: { startIso: string; day: string; time: string }[]
+        slots: { startIso: string; day: string; short: string; time: string }[]
       } | null
     }
 
@@ -34,6 +34,8 @@ const cityName = (location: string) => (location === "lisboa" ? "Lisboa" : "SetÃ
 const day = (d: Date) =>
   formatLisbon(d, "EEEE, dd 'de' MMMM").replace("-feira", "").replace(/^./, (c) => c.toUpperCase())
 const time = (d: Date) => formatLisbon(d, "HH:mm")
+/** "Seg 05/10" */
+const short = (d: Date) => formatLisbon(d, "EEE dd/MM").replace(/^./, (c) => c.toUpperCase())
 
 /**
  * GET /api/conta/resumo â€” what the (static) home page personalises for a
@@ -78,7 +80,10 @@ export async function GET() {
           serviceName: habit.serviceName,
           priceEur: habit.priceEur,
           city: cityName(habit.location),
-          slots: slots.map((s) => ({ startIso: s.startIso, day: day(new Date(s.startIso)), time: time(new Date(s.startIso)) })),
+          slots: slots.map((s) => {
+            const d = new Date(s.startIso)
+            return { startIso: s.startIso, day: day(d), short: short(d), time: time(d) }
+          }),
         }
       : null,
   }
