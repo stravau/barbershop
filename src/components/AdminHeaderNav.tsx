@@ -34,7 +34,7 @@ export function AdminHeaderNav({ pathname }: { pathname: string }) {
   }, [pathname])
 
   return (
-    <div className="-mb-3 flex min-w-0 flex-1 items-end justify-between gap-1 self-stretch sm:flex-none sm:justify-end sm:gap-3">
+    <div className="-mb-3 flex min-w-0 flex-1 items-end justify-between gap-1 self-stretch sm:justify-end sm:gap-3">
       <nav className="flex min-w-0 items-end gap-0.5 overflow-x-auto sm:gap-1">
         {TABS.map((t) => {
           const active = t.match(pathname)

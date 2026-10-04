@@ -12,7 +12,7 @@ import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
 // A signed-in client's header also carries the account link and "Terminar
 // sessão", so the other links need wider screens
 const NAV = [
-  { href: "/servicos", label: "Preços", className: "hidden min-[440px]:inline", signedIn: "hidden min-[420px]:inline" },
+  { href: "/servicos", label: "Preços", className: "hidden min-[450px]:inline", signedIn: "hidden min-[420px]:inline" },
   { href: "/#horario", label: "Horário", className: "hidden sm:inline", signedIn: "hidden md:inline" },
 ] as const
 
@@ -24,25 +24,24 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 min-[360px]:px-4 sm:gap-3 sm:px-6">
         <Link
           href="/"
           aria-label="Tarzan's Barbershop — início"
           className="flex shrink-0 items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem]"
         >
-          {/* Round crop into the illustration (the file has wide black margins) */}
-          <span className={`relative ${isAdmin ? "h-8 w-8" : "h-10 w-10"} shrink-0 overflow-hidden rounded-full border-2 border-ink bg-black sm:h-12 sm:w-12`}>
-            <Image
-              src="/logo.jpeg"
-              alt=""
-              fill
-              sizes="48px"
-              priority
-              className="origin-[50%_45%] scale-[1.4] object-cover"
-            />
-          </span>
+          {/* The logo cut out of its black background (public/logo-mark.png) */}
+          <Image
+            src="/logo-mark.png"
+            alt=""
+            width={600}
+            height={471}
+            sizes="64px"
+            priority
+            className={`${isAdmin ? "h-8" : "h-9 min-[360px]:h-10"} w-auto shrink-0 sm:h-12`}
+          />
           {/* On admin pages (and for signed-in clients) the buttons need the room on phones */}
-          <span className={isAdmin || signedIn ? "hidden sm:inline-flex" : "inline-flex"}>
+          <span className={isAdmin ? "hidden lg:inline-flex" : signedIn ? "hidden sm:inline-flex" : "inline-flex"}>
             <Wordmark />
           </span>
         </Link>
