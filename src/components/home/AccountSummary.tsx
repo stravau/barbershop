@@ -142,8 +142,8 @@ function ExpressBox({ express }: { express: Express }) {
       >
         {/* Hidden times can't be tabbed to; visibility flips after the slide */}
         <div className={cn("overflow-hidden transition-[visibility] duration-300", open ? "visible" : "invisible")}>
-          <div className="mt-3 mb-1 mr-1 rounded-lg border-2 border-ink bg-card p-3 text-left shadow-[3px_3px_0_var(--ink)]">
-            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-3 mb-1 mr-1 rounded-lg border-2 border-ink bg-card p-2 text-left shadow-[3px_3px_0_var(--ink)] sm:p-3">
+            <ul className="grid grid-cols-4 gap-1.5 sm:gap-2">
               {express.slots.map((slot) => (
                 <li key={slot.startIso}>
                   <ExpressSlot

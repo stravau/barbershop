@@ -95,10 +95,12 @@ function SlotFace({
         onClick={onClick}
         disabled={pending}
         aria-label={label}
-        className="w-full rounded-md border-2 border-ink bg-paper px-1.5 py-1 text-center transition hover:bg-yellow disabled:opacity-60"
+        className="w-full rounded-md border-2 border-ink bg-paper px-0.5 py-1 text-center transition hover:bg-yellow disabled:opacity-60 sm:px-1.5"
       >
-        <span className="block text-xs text-ink/80">{short ?? day}</span>
-        <span className="font-display block text-lg leading-tight tabular-nums">{pending ? "…" : time}</span>
+        <span className="block text-[clamp(0.58rem,2.9vw,0.75rem)] whitespace-nowrap text-ink/80">{short ?? day}</span>
+        <span className="font-display block text-[clamp(0.9rem,4.6vw,1.125rem)] leading-tight tabular-nums">
+          {pending ? "…" : time}
+        </span>
       </button>
     )
   }
