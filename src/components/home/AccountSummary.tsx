@@ -117,12 +117,13 @@ function ExpressBox({ express }: { express: Express }) {
         aria-expanded={open}
         aria-controls="express-slots"
         className={cn(
-          "btn h-14 w-full gap-3 px-4 py-0",
+          // Same shape as "Marcar corte", in the box's earlier colours (cream, yellow bolt)
+          "btn h-14 w-full gap-3 bg-paper px-4 py-0",
           // Stays pressed in while the times are open
           open && "[transform:translate(3px,3px)] shadow-[1px_1px_0_var(--ink)]",
         )}
       >
-        <Zap className="h-5 w-5 shrink-0 fill-ink" aria-hidden="true" />
+        <Zap className="h-5 w-5 shrink-0 fill-yellow" aria-hidden="true" />
         <span className="flex min-w-0 flex-col text-left leading-tight">
           <span className="text-base">Marcação express</span>
           <span className="truncate text-sm font-bold normal-case">
