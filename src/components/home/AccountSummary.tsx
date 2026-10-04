@@ -75,14 +75,29 @@ export function NextBookingBar() {
  * their usual booking at the next free times right under it (one tap each).
  */
 export function HeroCta() {
-  const express = useSignedIn()?.express
+  const s = useSignedIn()
+  const express = s?.express
   return (
     <>
       <Link href="/marcar" className="btn w-full text-lg">
         Marcar corte <ArrowRight className="h-5 w-5" />
       </Link>
+      {/* contain:inline-size — the boxes take the button's width instead of widening the hero column */}
+      {s && !express?.slots.length && (
+        <div className="mt-4 w-full rounded-lg border-2 border-dashed border-ink/40 p-3 text-left [contain:inline-size]">
+          <p className="font-display flex items-center gap-1.5">
+            <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
+            Marcação express
+          </p>
+          <p className="mt-1 text-xs text-ink/70">
+            {express
+              ? "Não há horas livres para o teu serviço habitual nas próximas 3 semanas."
+              : "Depois da tua primeira marcação, aparecem aqui as tuas horas habituais para marcares com um toque."}
+          </p>
+        </div>
+      )}
       {express && express.slots.length > 0 && (
-        <div className="mt-4 w-full rounded-lg border-2 border-ink bg-card p-3 text-left shadow-[3px_3px_0_var(--ink)]">
+        <div className="mt-4 w-full rounded-lg border-2 border-ink bg-card p-3 text-left shadow-[3px_3px_0_var(--ink)] [contain:inline-size]">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3">
             <p className="font-display flex items-center gap-1.5">
               <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />

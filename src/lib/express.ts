@@ -40,12 +40,22 @@ export async function clientHabit(
   clientId: string,
   preferredLocation: string | null,
 ): Promise<Habit | null> {
-  const past = await prisma.booking.findMany({
+  const select = { serviceId: true, location: true, startUtc: true } as const
+  let past = await prisma.booking.findMany({
     where: { clientId, status: { in: ["CONFIRMED", "COMPLETED"] }, startUtc: { lt: new Date() } },
-    select: { serviceId: true, location: true, startUtc: true },
+    select,
     orderBy: { startUtc: "desc" },
     take: 30,
   })
+  // No visit yet: go by what they've booked so far (a new client's first bookings)
+  if (past.length === 0) {
+    past = await prisma.booking.findMany({
+      where: { clientId, status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] } },
+      select,
+      orderBy: { startUtc: "desc" },
+      take: 30,
+    })
+  }
   if (past.length === 0) return null
 
   // Most frequent service (combo) that is still bookable
