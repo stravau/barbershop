@@ -14,8 +14,13 @@ const TAGLINE = "Corte, barba e sobrancelha."
 export default function HomePage() {
   return (
     <AccountSummaryProvider>
-      <NextBookingBar />
-      <Hero />
+      {/* From md up the first screen is all cream: the bar and the hero fill the
+          height under the header (70px) and the hero's content sits centred,
+          so the next section only starts below the fold */}
+      <div className="md:flex md:min-h-[calc(100svh-70px)] md:flex-col">
+        <NextBookingBar />
+        <Hero />
+      </div>
       <InstagramBand />
       <PricesAndHowItWorks />
       <Timetable />
@@ -32,8 +37,8 @@ function Hero() {
     // With the express box (signed-in client) the hero is taller; from md up it
     // then scales with the screen height so all of it fits on the first screen
     // (sizes only shrink as much as needed — tall screens keep them).
-    <section className="group/hero overflow-hidden">
-      <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:pt-20 md:pb-24 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
+    <section className="group/hero overflow-hidden md:flex md:flex-1 md:items-center">
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:py-16 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
         {/* (On phones under ~400px the name and tagline shrink to fit the width.)
             Everything is centred under the name. From md up the grid column
             is exactly as wide as "TARZAN'S" (its min-content). */}
