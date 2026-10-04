@@ -12,7 +12,7 @@ import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
 // A signed-in client's header also carries the account link and "Terminar
 // sessão", so the other links need wider screens
 const NAV = [
-  { href: "/servicos", label: "Preços", className: "hidden min-[380px]:inline", signedIn: "hidden min-[420px]:inline" },
+  { href: "/servicos", label: "Preços", className: "hidden min-[440px]:inline", signedIn: "hidden min-[420px]:inline" },
   { href: "/#horario", label: "Horário", className: "hidden sm:inline", signedIn: "hidden md:inline" },
 ] as const
 
