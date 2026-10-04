@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, CalendarCheck, ChevronDown, Zap } from "lucide-react"
+import { ArrowRight, CalendarCheck, Zap } from "lucide-react"
 import { ExpressSlot } from "@/components/ExpressSlot"
 import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
@@ -78,7 +78,7 @@ export function HeroCta() {
   const express = s?.express
   return (
     <>
-      <Link href="/marcar" className="btn w-full text-lg">
+      <Link href="/marcar" className="btn h-14 w-full text-lg">
         Marcar corte <ArrowRight className="h-5 w-5" />
       </Link>
       {/* contain:inline-size — the boxes take the button's width instead of widening the hero column */}
@@ -103,51 +103,45 @@ export function HeroCta() {
 type Express = NonNullable<Extract<AccountSummary, { signedIn: true }>["express"]>
 
 /**
- * The usual booking and its next free times. On phones it starts closed,
- * showing just the usual booking; a tap slides the times open. Always open
- * from sm up.
+ * "Marcação express": a button in the style of "Marcar corte" (same height,
+ * a little narrower, centred under it) with the usual booking on it. A click
+ * presses it in and slides the next free times open below.
  */
 function ExpressBox({ express }: { express: Express }) {
   const [open, setOpen] = useState(false)
   return (
-    <div data-express className="mt-4 w-full rounded-lg border-2 border-ink bg-card text-left shadow-[3px_3px_0_var(--ink)] [contain:inline-size]">
+    <div data-express className="mt-4 w-11/12 [contain:inline-size]">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls="express-slots"
-        className="flex w-full items-center justify-between gap-3 p-3 text-left sm:pointer-events-none sm:pb-0"
+        className={cn(
+          "btn h-14 w-full gap-3 px-4 py-0",
+          // Stays pressed in while the times are open
+          open && "[transform:translate(3px,3px)] shadow-[1px_1px_0_var(--ink)]",
+        )}
       >
-        <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3">
-          <span className="font-display flex items-center gap-1.5">
-            <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
-            Marcação express
-          </span>
-          <span className="text-xs text-ink/70">
+        <Zap className="h-5 w-5 shrink-0 fill-ink" aria-hidden="true" />
+        <span className="flex min-w-0 flex-col text-left leading-tight">
+          <span className="text-base">Marcação express</span>
+          <span className="truncate text-sm font-bold normal-case">
             {express.serviceName} · {formatPriceShort(express.priceEur)} · {express.city}
           </span>
         </span>
-        <ChevronDown
-          aria-hidden="true"
-          className={cn("h-5 w-5 shrink-0 transition-transform duration-300 sm:hidden", open && "rotate-180")}
-        />
+        <ArrowRight className="h-5 w-5 shrink-0" aria-hidden="true" />
       </button>
       {/* grid-rows 0fr → 1fr animates the height to fit the content */}
       <div
         id="express-slots"
         className={cn(
-          "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none sm:grid-rows-[1fr]",
+          "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
           open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
         )}
       >
-        {/* Hidden times can't be tabbed to on phones; visibility flips after the slide */}
-        <div
-          className={cn(
-            "overflow-hidden transition-[visibility] duration-300",
-            open ? "visible" : "invisible sm:visible",
-          )}
-        >
-          <div className="px-3 pt-2 pb-3">
+        {/* Hidden times can't be tabbed to; visibility flips after the slide */}
+        <div className={cn("overflow-hidden transition-[visibility] duration-300", open ? "visible" : "invisible")}>
+          <div className="mt-3 mb-1 mr-1 rounded-lg border-2 border-ink bg-card p-3 text-left shadow-[3px_3px_0_var(--ink)]">
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {express.slots.map((slot) => (
                 <li key={slot.startIso}>

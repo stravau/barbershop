@@ -588,16 +588,18 @@ function DetailsStep({
   const [email, setEmail] = useState(initial.email)
   const [notes, setNotes] = useState(initial.notes)
   const [err, setErr] = useState<string | null>(null)
+  // Booking needs an account: its details are used (changed in "Os meus dados")
+  const [fromAccount, setFromAccount] = useState(false)
 
-  // Signed-in clients: fill in what's still empty from their account
   useEffect(() => {
     fetch("/api/conta/sessao", { cache: "no-store" })
       .then((r) => r.json())
       .then((s: { signedIn: boolean; name?: string; phone?: string; email?: string }) => {
         if (!s.signedIn) return
-        setName((v) => v || s.name || "")
-        setPhone((v) => v || (s.phone?.startsWith("351") ? s.phone.slice(3) : s.phone) || "")
-        setEmail((v) => v || s.email || "")
+        setName(s.name ?? "")
+        setPhone((s.phone?.startsWith("351") ? s.phone.slice(3) : s.phone) ?? "")
+        setEmail(s.email ?? "")
+        setFromAccount(true)
       })
       .catch(() => {})
   }, [])
@@ -628,6 +630,7 @@ function DetailsStep({
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
+            readOnly={fromAccount}
             required
             autoComplete="name"
             placeholder="João Silva"
@@ -638,6 +641,7 @@ function DetailsStep({
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            readOnly={fromAccount}
             required
             inputMode="tel"
             autoComplete="tel"
@@ -650,6 +654,7 @@ function DetailsStep({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            readOnly={fromAccount}
             required
             inputMode="email"
             autoComplete="email"
@@ -657,6 +662,15 @@ function DetailsStep({
             className="input"
           />
         </Field>
+        {fromAccount && (
+          <p className="-mt-1 text-xs text-muted">
+            Dados da tua conta — para os mudares, vai a{" "}
+            <a href="/conta/dados" className="link">
+              Os meus dados
+            </a>
+            .
+          </p>
+        )}
         <Field label="Notas (opcional)">
           <textarea
             value={notes}
@@ -717,6 +731,11 @@ function ConfirmStep({
         }),
       })
       const json = await res.json()
+      // Session ended meanwhile: sign in again and come back
+      if (res.status === 401 && json.signIn) {
+        window.location.href = "/conta/entrar?next=/marcar"
+        return
+      }
       if (!res.ok) throw new Error(json.error || "Erro desconhecido")
       onSuccess({
         bookingId: json.booking.id,

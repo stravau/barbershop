@@ -39,7 +39,7 @@ function Hero() {
         <div className="flex flex-col items-center text-center">
           {/* "Barbershop" is sized in em so it scales with "TARZAN'S", and
               the inline-flex column centres it under the name */}
-          <h1 className="inline-flex flex-col items-center text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9] md:group-has-[[data-express]]/hero:text-[clamp(3.5rem,min(11vw,calc(37.5vh-11.35rem)),7.25rem)]">
+          <h1 className="inline-flex flex-col items-center text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9] md:group-has-[[data-express]]/hero:text-[clamp(3.5rem,min(11vw,calc(27.5vh-5.15rem)),7.25rem)]">
             <span className="print-shadow">TARZAN&apos;S</span>
             <span className="font-script mt-[0.02em] -rotate-2 text-[0.66em] leading-none text-jungle">
               Barbershop

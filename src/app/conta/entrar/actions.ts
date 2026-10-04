@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { normalizePhone } from "@/lib/clients"
+import { safeNext } from "@/lib/safe-next"
 import {
   currentClientSession,
   normalizeEmail,
@@ -10,12 +11,18 @@ import {
   verifyClientCode,
 } from "@/lib/client-auth"
 
+/** "&next=…" for the following step's URL (where to go once signed in). */
+const nextParam = (form: FormData) => {
+  const next = safeNext(String(form.get("next") ?? ""))
+  return next === "/conta" ? "" : `&next=${encodeURIComponent(next)}`
+}
+
 /** Step 1: email → a code is sent. */
 export async function requestLoginCode(form: FormData): Promise<void> {
   const email = String(form.get("email") ?? "")
   const error = await sendClientCode(email)
-  if (error) redirect(`/conta/entrar?erro=${error}&email=${encodeURIComponent(email)}`)
-  redirect(`/conta/entrar/codigo?email=${encodeURIComponent(normalizeEmail(email))}`)
+  if (error) redirect(`/conta/entrar?erro=${error}&email=${encodeURIComponent(email)}${nextParam(form)}`)
+  redirect(`/conta/entrar/codigo?email=${encodeURIComponent(normalizeEmail(email))}${nextParam(form)}`)
 }
 
 /** Step 2: the code → signed in (then registration if it's a new email). */
@@ -23,10 +30,10 @@ export async function confirmLoginCode(form: FormData): Promise<void> {
   const email = String(form.get("email") ?? "")
   const result = await verifyClientCode(email, String(form.get("code") ?? ""))
   if (result !== "ok") {
-    redirect(`/conta/entrar/codigo?email=${encodeURIComponent(email)}&erro=${result}`)
+    redirect(`/conta/entrar/codigo?email=${encodeURIComponent(email)}&erro=${result}${nextParam(form)}`)
   }
   const current = await currentClientSession()
-  redirect(current?.client ? "/conta" : "/conta/registo")
+  redirect(current?.client ? safeNext(String(form.get("next") ?? "")) : `/conta/registo?${nextParam(form).slice(1)}`)
 }
 
 /**
@@ -36,18 +43,19 @@ export async function confirmLoginCode(form: FormData): Promise<void> {
  */
 export async function completeRegistration(form: FormData): Promise<void> {
   const current = await currentClientSession()
+  const next = safeNext(String(form.get("next") ?? ""))
   if (!current) redirect("/conta/entrar")
-  if (current.client) redirect("/conta")
+  if (current.client) redirect(next)
 
   const name = String(form.get("name") ?? "").trim()
   const phone = normalizePhone(String(form.get("phone") ?? ""))
-  if (name.length < 2) redirect("/conta/registo?erro=nome")
-  if (!/^\d{11,15}$/.test(phone)) redirect("/conta/registo?erro=telefone")
+  if (name.length < 2) redirect(`/conta/registo?erro=nome${nextParam(form)}`)
+  if (!/^\d{11,15}$/.test(phone)) redirect(`/conta/registo?erro=telefone${nextParam(form)}`)
 
   const existing = await prisma.client.findUnique({ where: { phone } })
   // Don't take over someone else's record: only link if the email matches or is unset
   if (existing && existing.email && normalizeEmail(existing.email) !== current.session.email) {
-    redirect("/conta/registo?erro=telefone-usado")
+    redirect(`/conta/registo?erro=telefone-usado${nextParam(form)}`)
   }
   const client = existing
     ? await prisma.client.update({
@@ -60,5 +68,5 @@ export async function completeRegistration(form: FormData): Promise<void> {
     where: { id: current.session.id },
     data: { clientId: client.id },
   })
-  redirect("/conta")
+  redirect(next)
 }

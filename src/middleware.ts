@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
+import { CLIENT_COOKIE_NAME, isSessionValid, SESSION_COOKIE_NAME, verify } from "@/lib/admin-session"
 
 /**
+ * Booking needs a client account: /marcar without a (validly signed) client
+ * cookie goes to sign-in / registration and comes back afterwards. The
+ * booking API checks the session against the database too.
+ *
  * Admin gate.
  *  - /admin/login(/codigo) → public (password and code steps)
  *  - /admin/booking/[id]   → public (page itself enforces token OR session)
@@ -11,6 +15,15 @@ import { isSessionValid, SESSION_COOKIE_NAME } from "@/lib/admin-session"
  */
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+
+  if (pathname === "/marcar" || pathname.startsWith("/marcar/")) {
+    if (await verify("client", req.cookies.get(CLIENT_COOKIE_NAME)?.value)) return NextResponse.next()
+    const url = req.nextUrl.clone()
+    url.pathname = "/conta/entrar"
+    url.search = ""
+    url.searchParams.set("next", pathname + req.nextUrl.search)
+    return NextResponse.redirect(url)
+  }
 
   if (pathname.startsWith("/admin/login") || pathname.startsWith("/admin/booking/")) {
     return NextResponse.next()
@@ -27,5 +40,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/marcar", "/marcar/:path*"],
 }

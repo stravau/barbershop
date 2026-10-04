@@ -243,3 +243,10 @@
     width: 85%;
   }
 }
+
+/* Text fields filled in from the client's account (not editable there) */
+input.input:read-only {
+  background: var(--paper-dark);
+  color: var(--muted);
+  cursor: default;
+}

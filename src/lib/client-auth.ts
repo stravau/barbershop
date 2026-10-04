@@ -7,10 +7,10 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { prisma } from "./prisma"
 import { sendEmail } from "./email"
-import { sign, verify } from "./admin-session"
+import { CLIENT_COOKIE_NAME, sign, verify } from "./admin-session"
 import { failedAttemptsLeft, recordAttempt, requestInfo, secretsMatch } from "./admin-auth"
 
-export const CLIENT_COOKIE_NAME = "tarzans-cliente"
+export { CLIENT_COOKIE_NAME }
 const CLIENT_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 90 // 90 days
 const CODE_TTL_MS = 1000 * 60 * 10
 const CODE_MAX_TRIES = 5

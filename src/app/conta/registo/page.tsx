@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { currentClientSession } from "@/lib/client-auth"
+import { safeNext } from "@/lib/safe-next"
 import { AuthCard, FormError } from "../_components/AuthCard"
 import { completeRegistration } from "../entrar/actions"
 
@@ -15,15 +16,16 @@ const ERRORS: Record<string, string> = {
 }
 
 interface PageProps {
-  searchParams: Promise<{ erro?: string }>
+  searchParams: Promise<{ erro?: string; next?: string }>
 }
 
 /** First sign-in with a new email: name and phone to finish the account. */
 export default async function RegistoPage({ searchParams }: PageProps) {
+  const sp = await searchParams
+  const next = safeNext(sp.next)
   const current = await currentClientSession()
   if (!current) redirect("/conta/entrar")
-  if (current.client) redirect("/conta")
-  const sp = await searchParams
+  if (current.client) redirect(next)
 
   return (
     <AuthCard
@@ -37,6 +39,7 @@ export default async function RegistoPage({ searchParams }: PageProps) {
       }
     >
       <form action={completeRegistration} className="space-y-4">
+        <input type="hidden" name="next" value={next} />
         <label className="block">
           <span className="mb-1.5 block text-sm font-semibold">Nome</span>
           <input name="name" required autoComplete="name" placeholder="João Silva" className="input" />

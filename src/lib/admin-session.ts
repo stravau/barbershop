@@ -82,3 +82,6 @@ export const SESSION_COOKIE_NAME = SESSION_COOKIE
 export const PENDING_2FA_COOKIE_NAME = PENDING_2FA_COOKIE
 export const DEVICE_COOKIE_NAME = DEVICE_COOKIE
 export { SESSION_TTL_MS, PENDING_2FA_TTL_MS, DEVICE_TTL_MS }
+
+/** Client-account session cookie (set in lib/client-auth.ts; checked by the middleware for /marcar) */
+export const CLIENT_COOKIE_NAME = "tarzans-cliente"

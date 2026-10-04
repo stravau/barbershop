@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createBookingRequest } from "@/lib/bookings"
+import { currentClientSession } from "@/lib/client-auth"
 
 const bodySchema = z.object({
   location: z.enum(["lisboa", "setubal"]),
@@ -18,8 +19,17 @@ const bodySchema = z.object({
   notes: z.string().max(300).optional(),
 })
 
-/** POST /api/bookings — the public booking form. */
+/**
+ * POST /api/bookings — the booking form. Needs a signed-in client account;
+ * the booking goes under that account (its name, phone and email).
+ */
 export async function POST(req: NextRequest) {
+  const current = await currentClientSession()
+  if (!current?.client) {
+    return NextResponse.json({ error: "Inicia sessão para marcar.", signIn: true }, { status: 401 })
+  }
+  const account = current.client
+
   let body: unknown
   try {
     body = await req.json()
@@ -35,12 +45,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { location, services, startUtcIso, client, notes } = parsed.data
+  const { location, services, startUtcIso, notes } = parsed.data
   const result = await createBookingRequest({
     location,
     services,
     startUtc: new Date(startUtcIso),
-    client,
+    client: { name: account.name, phone: account.phone, email: account.email ?? current.session.email },
     notes,
   })
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })

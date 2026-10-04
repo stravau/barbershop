@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { safeNext } from "@/lib/safe-next"
 import { AuthCard, FormError } from "../../_components/AuthCard"
 import { confirmLoginCode } from "../actions"
 
@@ -13,18 +14,20 @@ const ERRORS: Record<string, string> = {
 }
 
 interface PageProps {
-  searchParams: Promise<{ email?: string; erro?: string }>
+  searchParams: Promise<{ email?: string; erro?: string; next?: string }>
 }
 
 /** Client sign-in, step 2: the code sent by email. */
 export default async function CodigoPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const email = sp.email ?? ""
+  const next = safeNext(sp.next)
+  const nextQuery = next === "/conta" ? "" : `&next=${encodeURIComponent(next)}`
 
   return (
     <AuthCard
       title="Código"
-      back={{ href: `/conta/entrar?email=${encodeURIComponent(email)}`, fixed: true }}
+      back={{ href: `/conta/entrar?email=${encodeURIComponent(email)}${nextQuery}`, fixed: true }}
       intro={
         <>
           Enviámos um código de 6 dígitos para <strong>{email}</strong>. É válido
@@ -34,6 +37,7 @@ export default async function CodigoPage({ searchParams }: PageProps) {
     >
       <form action={confirmLoginCode} className="space-y-4">
         <input type="hidden" name="email" value={email} />
+        <input type="hidden" name="next" value={next} />
         <input
           name="code"
           required
@@ -50,7 +54,7 @@ export default async function CodigoPage({ searchParams }: PageProps) {
           Entrar
         </button>
       </form>
-      <Link href={`/conta/entrar?email=${encodeURIComponent(email)}`} className="link mt-4 inline-block text-sm">
+      <Link href={`/conta/entrar?email=${encodeURIComponent(email)}${nextQuery}`} className="link mt-4 inline-block text-sm">
         Pedir outro código
       </Link>
     </AuthCard>
