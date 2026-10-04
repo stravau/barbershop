@@ -11,18 +11,34 @@ export type AccountSummary =
       signedIn: true
       firstName: string
       visits: number
-      hasHabit: boolean
       /** Next pending/confirmed booking */
-      next: { when: string; status: "PENDING" | "CONFIRMED" } | null
-      /** First express suggestion — only when there's no booking ahead */
-      express: { startIso: string; when: string; serviceName: string; priceEur: number } | null
+      next: {
+        day: string
+        time: string
+        status: "PENDING" | "CONFIRMED"
+        serviceName: string
+        priceEur: number
+        city: string
+      } | null
+      /** The usual booking and the next free times that fit it (null: no history yet) */
+      express: {
+        serviceName: string
+        priceEur: number
+        city: string
+        slots: { startIso: string; day: string; time: string }[]
+      } | null
     }
 
-const when = (d: Date) => formatLisbon(d, "EEE dd/MM 'às' HH:mm").replace(/^./, (c) => c.toUpperCase())
+const cityName = (location: string) => (location === "lisboa" ? "Lisboa" : "Setúbal")
+// "Segunda, 05 de Outubro" — short enough for one line in the slot buttons
+const day = (d: Date) =>
+  formatLisbon(d, "EEEE, dd 'de' MMMM").replace("-feira", "").replace(/^./, (c) => c.toUpperCase())
+const time = (d: Date) => formatLisbon(d, "HH:mm")
 
 /**
  * GET /api/conta/resumo — what the (static) home page personalises for a
- * signed-in client: greeting strip, hero button and loyalty card. Never cached.
+ * signed-in client: the account section, hero button and loyalty card.
+ * Never cached.
  */
 export async function GET() {
   const current = await currentClientSession()
@@ -34,30 +50,37 @@ export async function GET() {
   const now = new Date()
   const bookings = await prisma.booking.findMany({
     where: { clientId: client.id },
-    select: { status: true, startUtc: true },
+    select: { status: true, startUtc: true, serviceName: true, servicePrice: true, location: true },
     orderBy: { startUtc: "asc" },
   })
   const upcoming = bookings.find(
     (b) => b.startUtc >= now && (b.status === "PENDING" || b.status === "CONFIRMED"),
   )
   const habit = await clientHabit(client.id, client.preferredLocation)
-  const first = !upcoming && habit ? (await suggestSlots(habit))[0] : undefined
+  const slots = habit ? await suggestSlots(habit) : []
 
   const summary: AccountSummary = {
     signedIn: true,
     firstName: client.name.split(" ")[0],
     visits: bookings.filter((b) => isDone(b, now)).length,
-    hasHabit: !!habit,
-    next: upcoming ? { when: when(upcoming.startUtc), status: upcoming.status as "PENDING" | "CONFIRMED" } : null,
-    express:
-      first && habit
-        ? {
-            startIso: first.startIso,
-            when: when(new Date(first.startIso)),
-            serviceName: habit.serviceName,
-            priceEur: habit.priceEur,
-          }
-        : null,
+    next: upcoming
+      ? {
+          day: day(upcoming.startUtc),
+          time: time(upcoming.startUtc),
+          status: upcoming.status as "PENDING" | "CONFIRMED",
+          serviceName: upcoming.serviceName,
+          priceEur: upcoming.servicePrice,
+          city: cityName(upcoming.location),
+        }
+      : null,
+    express: habit
+      ? {
+          serviceName: habit.serviceName,
+          priceEur: habit.priceEur,
+          city: cityName(habit.location),
+          slots: slots.map((s) => ({ startIso: s.startIso, day: day(new Date(s.startIso)), time: time(new Date(s.startIso)) })),
+        }
+      : null,
   }
   return NextResponse.json(summary, { headers: { "Cache-Control": "no-store" } })
 }

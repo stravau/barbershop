@@ -1,19 +1,21 @@
 "use client"
 
+import { useCallback, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { Menu } from "lucide-react"
 import { AdminHeaderNav } from "@/components/AdminHeaderNav"
+import { ClientMenu } from "@/components/ClientMenu"
 import { HeaderAccount, useHeaderSession } from "@/components/HeaderAccount"
 import { InstagramIcon } from "@/components/InstagramIcon"
 import { Wordmark } from "@/components/Wordmark"
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
 
-// A signed-in client's header also carries the account link and "Terminar
-// sessão", so the other links need wider screens
+// Signed-in clients get these from md up; on phones they're in ClientMenu
 const NAV = [
-  { href: "/servicos", label: "Preços", className: "hidden min-[450px]:inline", signedIn: "hidden min-[420px]:inline" },
-  { href: "/#horario", label: "Horário", className: "hidden sm:inline", signedIn: "hidden md:inline" },
+  { href: "/servicos", label: "Preços", className: "hidden min-[450px]:inline", signedIn: "inline" },
+  { href: "/#horario", label: "Horário", className: "hidden sm:inline", signedIn: "inline" },
 ] as const
 
 export function SiteHeader() {
@@ -21,6 +23,16 @@ export function SiteHeader() {
   const isAdmin = pathname.startsWith("/admin")
   const [session, setSession] = useHeaderSession(pathname)
   const signedIn = !isAdmin && !!session?.signedIn
+  const [menuOpen, setMenuOpen] = useState(false)
+  const closeMenu = useCallback(() => setMenuOpen(false), [])
+  const logoutDone = useCallback(() => setSession({ signedIn: false }), [setSession])
+
+  // A navigation (e.g. the browser's back button) closes the menu
+  const [menuPath, setMenuPath] = useState(pathname)
+  if (menuPath !== pathname) {
+    setMenuPath(pathname)
+    setMenuOpen(false)
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
@@ -41,7 +53,7 @@ export function SiteHeader() {
             className={`${isAdmin ? "h-8" : "h-9 min-[360px]:h-10"} w-auto shrink-0 sm:h-12`}
           />
           {/* On admin pages (and for signed-in clients) the buttons need the room on phones */}
-          <span className={isAdmin ? "hidden lg:inline-flex" : signedIn ? "hidden sm:inline-flex" : "inline-flex"}>
+          <span className={isAdmin ? "hidden lg:inline-flex" : signedIn ? "hidden md:inline-flex" : "inline-flex"}>
             <Wordmark />
           </span>
         </Link>
@@ -49,7 +61,35 @@ export function SiteHeader() {
         {isAdmin ? (
           !pathname.startsWith("/admin/login") && <AdminHeaderNav pathname={pathname} />
         ) : (
-        <nav className="flex items-center gap-3 sm:gap-6">
+        <>
+        {signedIn && session?.signedIn && (
+          <>
+            {/* Phones: greeting in the middle, everything else in the side menu.
+                The menu button is as wide as the logo so the greeting is centred. */}
+            <p className="font-display min-w-0 flex-1 truncate text-center text-lg md:hidden">
+              Olá, {session.name.split(" ")[0]}
+            </p>
+            <div className="flex w-[51px] shrink-0 justify-end md:hidden">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                aria-label="Abrir menu"
+                aria-expanded={menuOpen}
+                className="grid h-10 w-10 place-items-center rounded-md border-2 border-ink bg-yellow shadow-[2px_2px_0_var(--ink)] transition active:translate-x-px active:translate-y-px active:shadow-none"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            </div>
+            <ClientMenu
+              open={menuOpen}
+              onClose={closeMenu}
+              name={session.name}
+              pathname={pathname}
+              onLogout={logoutDone}
+            />
+          </>
+        )}
+        <nav className={`items-center gap-3 sm:gap-6 ${signedIn ? "hidden md:flex" : "flex"}`}>
           {NAV.map((item) => (
             <Link
               key={item.href}
@@ -73,9 +113,10 @@ export function SiteHeader() {
           <HeaderAccount
             pathname={pathname}
             session={isAdmin ? null : session}
-            onLogout={() => setSession({ signedIn: false })}
+            onLogout={logoutDone}
           />
         </nav>
+        </>
         )}
       </div>
     </header>
