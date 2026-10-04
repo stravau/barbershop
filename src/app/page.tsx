@@ -29,22 +29,25 @@ function Hero() {
   const cut = getServiceItem("corte")
 
   return (
-    <section className="overflow-hidden">
-      <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:pt-20 md:pb-24">
+    // With the express box (signed-in client) the hero is taller; from md up it
+    // then scales with the screen height so all of it fits on the first screen
+    // (sizes only shrink as much as needed — tall screens keep them).
+    <section className="group/hero overflow-hidden">
+      <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:pt-20 md:pb-24 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
         {/* Everything is centred under the name. From md up the grid column
             is exactly as wide as "TARZAN'S" (its min-content). */}
         <div className="flex flex-col items-center text-center">
           {/* "Barbershop" is sized in em so it scales with "TARZAN'S", and
               the inline-flex column centres it under the name */}
-          <h1 className="inline-flex flex-col items-center text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9]">
+          <h1 className="inline-flex flex-col items-center text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9] md:group-has-[[data-express]]/hero:text-[clamp(3.5rem,min(11vw,calc(37.5vh-11.35rem)),7.25rem)]">
             <span className="print-shadow">TARZAN&apos;S</span>
             <span className="font-script mt-[0.02em] -rotate-2 text-[0.66em] leading-none text-jungle">
               Barbershop
             </span>
           </h1>
 
-          <p className="font-display mt-9 text-2xl sm:text-3xl">{TAGLINE}</p>
-          <p className="mt-4 max-w-md text-lg leading-relaxed text-ink/80">
+          <p className="font-display mt-9 text-2xl sm:text-3xl md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">{TAGLINE}</p>
+          <p className="mt-4 max-w-md text-lg leading-relaxed text-ink/80 md:group-has-[[data-express]]/hero:mt-[clamp(0.5rem,1.5vh,1rem)]">
             Em Setúbal durante a semana e em Lisboa à sexta e ao sábado.
             Escolhe o serviço, o dia e a hora. Faz a tua marcação em menos de
             1&nbsp;minuto.
@@ -52,7 +55,7 @@ function Hero() {
 
           {/* Same width as the tagline (an invisible copy of it sizes this
               column), centred under "Barbershop" */}
-          <div className="mt-9 grid w-max max-w-full justify-items-center">
+          <div className="mt-9 grid w-max max-w-full justify-items-center md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">
             <span
               aria-hidden="true"
               className="font-display invisible h-0 overflow-hidden whitespace-nowrap text-2xl sm:text-3xl"
@@ -60,7 +63,7 @@ function Hero() {
               {TAGLINE}
             </span>
             <HeroCta />
-            <Link href="#precos" className="link mt-4 font-semibold">
+            <Link href="#precos" className="link mt-4 font-semibold md:group-has-[[data-express]]/hero:mt-[clamp(0.5rem,1.5vh,1rem)]">
               Ver preços
             </Link>
           </div>

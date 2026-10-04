@@ -37,9 +37,10 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b-2 border-ink bg-paper">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 min-[360px]:px-4 sm:gap-3 sm:px-6">
+        {/* In the admin the logo goes back to the agenda */}
         <Link
-          href="/"
-          aria-label="Tarzan's Barbershop — início"
+          href={isAdmin ? "/admin" : "/"}
+          aria-label={isAdmin ? "Tarzan's Barbershop — agenda" : "Tarzan's Barbershop — início"}
           // Signed-in client on a phone: menu on the left, logo on the right
           className={`flex shrink-0 items-center gap-2 text-[1.15rem] sm:gap-3 sm:text-[1.6rem] ${signedIn ? "max-md:order-last" : ""}`}
         >

@@ -83,7 +83,7 @@ export function HeroCta() {
       </Link>
       {/* contain:inline-size — the boxes take the button's width instead of widening the hero column */}
       {s && !express?.slots.length && (
-        <div className="mt-4 w-full rounded-lg border-2 border-dashed border-ink/40 p-3 text-left [contain:inline-size]">
+        <div data-express className="mt-4 w-full rounded-lg border-2 border-dashed border-ink/40 p-3 text-left [contain:inline-size]">
           <p className="font-display flex items-center gap-1.5">
             <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
             Marcação express
@@ -110,7 +110,7 @@ type Express = NonNullable<Extract<AccountSummary, { signedIn: true }>["express"
 function ExpressBox({ express }: { express: Express }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="mt-4 w-full rounded-lg border-2 border-ink bg-card text-left shadow-[3px_3px_0_var(--ink)] [contain:inline-size]">
+    <div data-express className="mt-4 w-full rounded-lg border-2 border-ink bg-card text-left shadow-[3px_3px_0_var(--ink)] [contain:inline-size]">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
