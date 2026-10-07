@@ -5,11 +5,13 @@ import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import { emailLinkStillValid, isAdmin } from "@/lib/admin-auth"
+import { LATE_CANCEL_HOURS, hoursUntil } from "@/lib/booking-status"
 import { cn } from "@/lib/utils"
+import { ActionForm } from "@/components/ActionForm"
 import { ContactLinks } from "../../_components/ContactLinks"
 import { FlashBanner } from "../../_components/FlashBanner"
 import { DeleteBookingButton } from "./DeleteBookingButton"
-import { updateBooking } from "./actions"
+import { cancelBookingAction, confirmBookingAction, updateBooking } from "./actions"
 import { CityTag, StatusPill } from "../../_components/ui"
 import { isDone, received } from "../../_lib"
 
@@ -66,9 +68,23 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const now = new Date()
   const isPending = booking.status === "PENDING"
   const isConfirmed = booking.status === "CONFIRMED"
+  const isCancelled = booking.status === "CANCELLED"
   const isPast = booking.startUtc < now
-  const action = (kind: "confirm" | "reject") =>
-    `/api/admin/bookings/${booking.id}/${kind}?token=${booking.adminToken}&from=admin`
+  const canConfirm = isPending && !isPast
+  const canCancel = isPending || (isConfirmed && !isPast)
+  // The email's "Confirmar"/"Cancelar" buttons open this page with ?acao=…
+  const asked = sp.acao === "confirmar" ? "confirm" : sp.acao === "cancelar" ? "cancel" : null
+  const fields = { id: booking.id, token: booking.adminToken }
+  const cancelConfirm = {
+    title: isPending ? "Recusar o pedido?" : "Cancelar a marcação?",
+    body: booking.email
+      ? `O cliente recebe um email a avisar (${booking.email}).`
+      : "Este cliente não tem email: avisa-o tu.",
+    confirmLabel: isPending ? "Recusar" : "Cancelar marcação",
+    danger: true,
+  }
+  const cancelledHoursBefore =
+    isCancelled && booking.cancelledAt ? hoursUntil(booking.startUtc, booking.cancelledAt) : null
 
   const visits = booking.client.bookings.filter((b) => isDone(b, now))
   const lastVisit = visits
@@ -101,8 +117,46 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           <FlashBanner
             text={notice.text}
             tone={notice.tone}
-            clearParams={["confirmed", "rejected", "already", "saved"]}
+            clearParams={["confirmed", "rejected", "already", "saved", "acao"]}
           />
+        )}
+
+        {/* Arrived from the email's "Confirmar"/"Cancelar": ask for the tap here */}
+        {asked && !notice && (
+          <div
+            className={cn(
+              "mb-6 rounded-lg border-2 border-ink p-5 shadow-[4px_4px_0_var(--ink)]",
+              asked === "confirm" ? "bg-success/15" : "bg-danger/10",
+            )}
+          >
+            {asked === "confirm" && canConfirm ? (
+              <>
+                <p className="text-xl font-semibold">Confirmar esta marcação?</p>
+                <p className="mt-1 text-sm text-muted">
+                  {booking.email ? "O cliente recebe a confirmação por email, com a morada." : "Este cliente não tem email: avisa-o tu."}
+                </p>
+                <div className="mt-4">
+                  <ActionForm action={confirmBookingAction} fields={fields} className="btn bg-success text-paper">
+                    Sim, confirmar
+                  </ActionForm>
+                </div>
+              </>
+            ) : asked === "cancel" && canCancel ? (
+              <>
+                <p className="text-xl font-semibold">{isPending ? "Recusar este pedido?" : "Cancelar esta marcação?"}</p>
+                <p className="mt-1 text-sm text-muted">{cancelConfirm.body}</p>
+                <div className="mt-4">
+                  <ActionForm action={cancelBookingAction} fields={fields} className="btn border-ink bg-danger text-paper">
+                    Sim, {isPending ? "recusar" : "cancelar"}
+                  </ActionForm>
+                </div>
+              </>
+            ) : (
+              <p className="font-semibold">
+                Esta marcação já não está à espera de resposta (estado: {statusText(booking.status, isPast)}).
+              </p>
+            )}
+          </div>
         )}
 
         <div className="rounded-lg border-2 border-ink bg-card p-6 shadow-[6px_6px_0_var(--ink)] sm:p-8">
@@ -124,19 +178,38 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             )}
           </p>
 
-          {(isPending || (isConfirmed && !isPast)) && !confirmed && !rejected && (
-            <div className="mt-5 flex flex-wrap gap-2">
-              {isPending && !isPast && (
-                <a href={action("confirm")} className="btn bg-success text-paper">
-                  Confirmar
-                </a>
+          {cancelledHoursBefore !== null && booking.cancelledAt && (
+            <p className="mt-2 text-sm">
+              Cancelada a {formatLisbon(booking.cancelledAt, "dd/MM 'às' HH:mm")}
+              {cancelledHoursBefore > 0 && (
+                <>
+                  {" · "}
+                  {cancelledHoursBefore < 1 ? "menos de 1 h" : `${Math.floor(cancelledHoursBefore)} h`} antes
+                  {cancelledHoursBefore < LATE_CANCEL_HOURS && booking.confirmedAt && (
+                    <span className="caps ml-2 rounded bg-yellow px-1.5 py-0.5 text-xs ring-1 ring-ink">
+                      Em cima da hora
+                    </span>
+                  )}
+                </>
               )}
-              <a
-                href={action("reject")}
+            </p>
+          )}
+
+          {canCancel && !asked && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {canConfirm && (
+                <ActionForm action={confirmBookingAction} fields={fields} className="btn bg-success text-paper">
+                  Confirmar
+                </ActionForm>
+              )}
+              <ActionForm
+                action={cancelBookingAction}
+                fields={fields}
+                confirm={cancelConfirm}
                 className="btn-ghost border-danger text-danger hover:bg-danger/5"
               >
                 {isPending ? "Recusar" : "Cancelar marcação"}
-              </a>
+              </ActionForm>
             </div>
           )}
 
@@ -216,9 +289,18 @@ function errorMessage(code: string): string {
       return "Marcação não encontrada."
     case "already-cancelled":
       return "Esta marcação já foi cancelada e não pode ser confirmada."
+    case "not-allowed":
+      return "Esta marcação já não pode ser alterada."
     default:
       return "Ocorreu um erro inesperado."
   }
+}
+
+function statusText(status: string, past: boolean): string {
+  if (status === "CANCELLED") return "cancelada"
+  if (status === "CONFIRMED") return past ? "realizada" : "confirmada"
+  if (status === "PENDING") return past ? "pendente, a hora já passou" : "pendente"
+  return status.toLowerCase()
 }
 
 function Message({

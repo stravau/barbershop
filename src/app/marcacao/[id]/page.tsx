@@ -1,22 +1,38 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { MapPin } from "lucide-react"
+import { CalendarPlus, MapPin } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { formatLisbon } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import { getLocationAddress, mapsUrl } from "@/lib/addresses"
 import { whatsappUrl } from "@/lib/site"
+import { hasPhone } from "@/lib/clients"
+import { LATE_CANCEL_HOURS, bookingForEmail, hoursUntil } from "@/lib/booking-status"
+import { calendarUrl, icsUrl } from "@/lib/email"
 import { cn } from "@/lib/utils"
 import { BackLink } from "@/components/BackLink"
+import { ActionForm } from "@/components/ActionForm"
+import { cancelByClientAction } from "./actions"
+
+// Private page (the link carries the booking's token)
+export const metadata: Metadata = { title: "A tua marcação", robots: "noindex" }
 
 interface PageProps {
   params: Promise<{ id: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
+const CANCEL_ERRORS: Record<string, string> = {
+  past: "Esta marcação já passou, por isso já não dá para cancelar.",
+  "already-cancelled": "Esta marcação já estava cancelada.",
+}
+
 /**
  * Public-facing booking detail page. The customer reaches it via a link
  * sent in their booking emails. Token gate prevents booking-id enumeration.
+ * The emails' "Cancelar marcação" opens it with ?cancelar=1, which asks for
+ * the tap that cancels (opening a link never cancels anything).
  */
 export default async function MarcacaoPage({ params, searchParams }: PageProps) {
   const { id } = await params
@@ -47,24 +63,67 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
     )
   }
 
+  const now = new Date()
   const isConfirmed = booking.status === "CONFIRMED"
   const isCancelled = booking.status === "CANCELLED"
   const isPending = booking.status === "PENDING"
   const isCompleted = booking.status === "COMPLETED"
+  const isUpcoming = booking.startUtc > now
+  const canCancel = (isPending || isConfirmed) && isUpcoming
+  const lateCancel = isConfirmed && hoursUntil(booking.startUtc, now) < LATE_CANCEL_HOURS
+  const askCancel = sp.cancelar === "1" && canCancel
+  const justCancelled = sp.cancelled === "1"
+  const cancelError = typeof sp.erro === "string" ? CANCEL_ERRORS[sp.erro] : undefined
 
   const city = booking.location === "lisboa" ? "Lisboa" : "Setúbal"
   // The address is only revealed once the barber has accepted the booking.
   const address = isConfirmed ? getLocationAddress(booking.location) : null
   const whatsapp = whatsappUrl()
+  const forCalendar = bookingForEmail(booking, isConfirmed)
 
   const whenForCopy = formatLisbon(
     booking.startUtc,
     "EEEE, dd 'de' MMMM 'às' HH:mm",
   )
+  const cancelFields = { id: booking.id, token }
+  const lateNote = lateCancel
+    ? `Faltam menos de ${LATE_CANCEL_HOURS} horas. Podes cancelar na mesma, mas cancelamentos em cima da hora podem impedir marcações futuras.`
+    : null
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-16">
       <BackLink href="/" />
+
+      {(justCancelled || cancelError) && (
+        <div
+          role="status"
+          className={cn(
+            "mb-6 rounded-md border-2 border-ink px-4 py-3 font-semibold",
+            justCancelled ? "bg-success/15" : "bg-yellow/40",
+          )}
+        >
+          {justCancelled ? "Marcação cancelada. O barbeiro já foi avisado." : cancelError}
+        </div>
+      )}
+
+      {askCancel && (
+        <div className="mb-8 rounded-lg border-2 border-ink bg-danger/10 p-5 shadow-[4px_4px_0_var(--ink)]">
+          <p className="text-xl font-semibold">Queres cancelar esta marcação?</p>
+          <p className="mt-1 text-ink/80">
+            {booking.serviceName}, {whenForCopy}, em {city}.
+          </p>
+          {lateNote && <p className="mt-2 text-sm font-semibold">{lateNote}</p>}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <ActionForm action={cancelByClientAction} fields={cancelFields} className="btn border-ink bg-danger text-paper">
+              Sim, cancelar
+            </ActionForm>
+            <Link href={`/marcacao/${booking.id}?token=${token}`} className="btn-ghost">
+              Não, manter
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <span
           className={cn(
@@ -118,7 +177,7 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
           <Row label="Cidade" value={city} />
           <div className="my-3 border-t border-border"></div>
           <Row label="Nome" value={booking.client.name} />
-          <Row label="Telefone" value={booking.client.phone} />
+          {hasPhone(booking.client.phone) && <Row label="Telefone" value={booking.client.phone} />}
           {booking.email && <Row label="Email" value={booking.email} />}
         </div>
 
@@ -138,6 +197,22 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
             >
               Abrir no Google Maps
             </a>
+          </div>
+        )}
+
+        {isConfirmed && isUpcoming && (
+          <div className="mt-5">
+            <p className="caps flex items-center gap-1.5 text-xs text-muted">
+              <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" /> Adicionar ao calendário
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <a href={calendarUrl(forCalendar)} target="_blank" rel="noopener" className="btn-ghost px-3 py-1.5 text-sm">
+                Google Calendar
+              </a>
+              <a href={icsUrl(forCalendar)} className="btn-ghost px-3 py-1.5 text-sm">
+                iPhone / Outlook
+              </a>
+            </div>
           </div>
         )}
 
@@ -165,6 +240,28 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
           </a>
         )}
       </div>
+
+      {canCancel && !askCancel && (
+        <div className="mt-8 text-center">
+          <ActionForm
+            action={cancelByClientAction}
+            fields={cancelFields}
+            confirm={{
+              title: "Cancelar a marcação?",
+              body: lateNote ?? `${booking.serviceName}, ${whenForCopy}. O barbeiro é avisado e a hora fica livre.`,
+              confirmLabel: "Sim, cancelar",
+              cancelLabel: "Não, manter",
+              danger: true,
+            }}
+            className="text-sm font-semibold text-danger underline-offset-4 hover:underline"
+          >
+            Cancelar marcação
+          </ActionForm>
+          <p className="mt-1 text-xs text-muted">
+            Cancela com pelo menos {LATE_CANCEL_HOURS} horas de antecedência.
+          </p>
+        </div>
+      )}
 
       <p className="mt-9 text-center text-xs text-muted">Referência: {booking.id}</p>
     </main>

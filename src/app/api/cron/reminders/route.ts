@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
-import { addHours } from "date-fns"
 import { prisma } from "@/lib/prisma"
-import { formatLisbon } from "@/lib/tz"
+import { formatLisbon, getLisbonDayBounds, lisbonPeriods } from "@/lib/tz"
+import { ymdPlusDays } from "@/lib/schedule"
 import { sendEmail, clientReminderEmail } from "@/lib/email"
 import { getLocationAddress } from "@/lib/addresses"
 
 /**
- * Cron job — runs daily (see vercel.json). Finds CONFIRMED bookings that
- * start ~24 hours from now (a 22h–30h window catches everything between
- * runs even with timezone/DST shifts) and sends a reminder email if one
- * hasn't been sent already.
+ * Cron job — runs once a day (see vercel.json). Sends a reminder email for
+ * every CONFIRMED booking on the next Lisbon calendar day that hasn't had
+ * one yet. (A whole-day window, so every booking is covered whatever its
+ * time; a "~24h ahead" window missed the afternoons with a daily run.)
  *
  * Auth: Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`. We check
  * this to prevent random callers from triggering reminder spam.
@@ -27,14 +27,13 @@ export async function GET(req: NextRequest) {
   // Set CRON_SECRET in production.
 
   const now = new Date()
-  const startMin = addHours(now, 22)
-  const startMax = addHours(now, 30)
+  const tomorrow = getLisbonDayBounds(ymdPlusDays(lisbonPeriods(now).today, 1))
 
   const bookings = await prisma.booking.findMany({
     where: {
       status: "CONFIRMED",
       reminderSentAt: null,
-      startUtc: { gte: startMin, lte: startMax },
+      startUtc: { gte: tomorrow.startUtc, lt: tomorrow.endUtc },
     },
     include: { client: true },
   })

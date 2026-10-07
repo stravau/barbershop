@@ -32,28 +32,3 @@ export function ConfirmForm({
     </form>
   )
 }
-
-/** A link (e.g. the cancel route) that asks first. */
-export function ConfirmLink({
-  href,
-  warning,
-  className,
-  children,
-}: {
-  href: string
-  warning: string
-  className?: string
-  children: React.ReactNode
-}) {
-  return (
-    <a
-      href={href}
-      onClick={(e) => {
-        if (!window.confirm(warning)) e.preventDefault()
-      }}
-      className={className}
-    >
-      {children}
-    </a>
-  )
-}

@@ -1,125 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { emailLinkStillValid, isAdmin } from "@/lib/admin-auth"
-import { formatLisbon } from "@/lib/tz"
-import { sendEmail, clientConfirmedEmail, getSiteUrl } from "@/lib/email"
-import { updateEvent } from "@/lib/gcal"
-import { getLocationAddress } from "@/lib/addresses"
 
 /**
- * GET /api/admin/bookings/[id]/confirm?token=...
+ * GET /api/admin/bookings/[id]/confirm?token=…
  *
- * Called when the barber clicks "Confirmar" in the email notification.
- * Idempotent: confirming an already-confirmed booking is a no-op.
- *
- * Auth: token must match Booking.adminToken (sent only to admin email).
+ * The "Confirmar" link of older notification emails. Opening a link must not
+ * change anything (email scanners open links too), so this only shows the
+ * booking page, which asks for the tap that confirms (a POST).
  */
-export async function GET(
-  req: NextRequest,
-  ctx: { params: Promise<{ id: string }> },
-) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
-  const url = new URL(req.url)
-  const token = url.searchParams.get("token")
-  const fromAdmin = url.searchParams.get("from") === "admin"
-  const site = getSiteUrl()
-
-  // Where to land when the action is done. Email links → detail page (so the
-  // barber sees the booking context). Admin UI → back to the list.
-  const successUrl = (qs: string) =>
-    fromAdmin
-      ? `${site}/admin?flash=confirmed`
-      : `${site}/admin/booking/${id}?token=${token}&${qs}`
-  const errorUrl = (code: string) =>
-    fromAdmin
-      ? `${site}/admin?flash=error&code=${code}`
-      : `${site}/admin/booking/${id}?error=${code}`
-
-  if (!token) {
-    return redirectTo(errorUrl("missing-token"))
-  }
-
-  const booking = await prisma.booking.findUnique({
-    where: { id },
-    include: { client: true },
-  })
-
-  if (!booking) {
-    return redirectTo(errorUrl("not-found"))
-  }
-  // From the admin (signed in) always OK; from an email link only while the
-  // link is still valid (until a few days after the booking)
-  const viaAdmin = await isAdmin()
-  if (!viaAdmin && (booking.adminToken !== token || !emailLinkStillValid(booking.startUtc))) {
-    return redirectTo(errorUrl("invalid-token"))
-  }
-
-  // Idempotent: if already confirmed, just redirect to status page
-  if (booking.status === "CONFIRMED") {
-    return redirectTo(
-      fromAdmin
-        ? `${site}/admin?flash=already-confirmed`
-        : `${site}/admin/booking/${id}?token=${token}&already=1`,
-    )
-  }
-
-  if (booking.status === "CANCELLED") {
-    return redirectTo(errorUrl("already-cancelled"))
-  }
-
-  // Update booking
-  const updated = await prisma.booking.update({
-    where: { id },
-    data: { status: "CONFIRMED", confirmedAt: new Date() },
-  })
-
-  // Drop the "[PENDENTE]" prefix from the GCal event title (best effort)
-  if (booking.gcalEventId) {
-    try {
-      await updateEvent(booking.gcalEventId, {
-        summary: `${updated.serviceName} - ${booking.client.name}`,
-      })
-    } catch (e) {
-      console.error("[admin/confirm] gcal rename failed:", e)
-    }
-  }
-
-  // Send confirmation email to client (best effort)
-  if (booking.email) {
-    try {
-      const tpl = clientConfirmedEmail({
-        id: updated.id,
-        clientName: booking.client.name,
-        clientPhone: booking.client.phone,
-        clientEmail: booking.email,
-        serviceName: updated.serviceName,
-        durationMin: updated.durationMin,
-        priceEur: updated.servicePrice,
-        location: updated.location === "lisboa" ? "Lisboa" : "Setúbal",
-        address: getLocationAddress(updated.location),
-        whenLocal: formatLisbon(
-          updated.startUtc,
-          "EEEE, dd 'de' MMMM 'às' HH:mm",
-        ),
-        startUtc: updated.startUtc,
-        endUtc: updated.endUtc,
-        notes: updated.notes,
-        adminToken: updated.adminToken,
-        clientToken: updated.clientToken,
-      })
-      await sendEmail({
-        to: booking.email,
-        subject: tpl.subject,
-        html: tpl.html,
-      })
-    } catch (e) {
-      console.error("[admin/confirm] client email failed:", e)
-    }
-  }
-
-  return redirectTo(successUrl("confirmed=1"))
-}
-
-function redirectTo(url: string): NextResponse {
-  return NextResponse.redirect(url, { status: 302 })
+  const token = new URL(req.url).searchParams.get("token")
+  const qs = token ? `?token=${encodeURIComponent(token)}&acao=confirmar` : ""
+  return NextResponse.redirect(new URL(`/admin/booking/${id}${qs}`, req.url), 302)
 }

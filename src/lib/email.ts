@@ -1,6 +1,7 @@
 import { Resend } from "resend"
 import { mapsUrl } from "./addresses"
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL, getSiteUrl, whatsappUrl } from "./site"
+import { formatLisbon } from "./tz"
 
 export { getSiteUrl }
 
@@ -170,9 +171,12 @@ export function adminBookingEmail(booking: BookingForEmail): {
   subject: string
   html: string
 } {
+  // Both open the booking page, which asks for the tap that actually changes
+  // it — email scanners that open links can't confirm or cancel anything
   const site = getSiteUrl()
-  const confirmUrl = `${site}/api/admin/bookings/${booking.id}/confirm?token=${booking.adminToken}`
-  const rejectUrl = `${site}/api/admin/bookings/${booking.id}/reject?token=${booking.adminToken}`
+  const pageUrl = `${site}/admin/booking/${booking.id}?token=${booking.adminToken}`
+  const confirmUrl = `${pageUrl}&acao=confirmar`
+  const rejectUrl = `${pageUrl}&acao=cancelar`
 
   const subject = `Nova marcação pendente: ${booking.serviceName}, ${booking.whenLocal}`
   const html = `<!DOCTYPE html>
@@ -260,8 +264,7 @@ export function clientConfirmedEmail(booking: BookingForEmail): {
   subject: string
   html: string
 } {
-  const site = getSiteUrl()
-  const cancelUrl = `${site}/api/bookings/${booking.id}/cancel?token=${booking.clientToken}`
+  const cancelUrl = cancelPageUrl(booking)
   const gcalUrl = calendarUrl(booking)
   const map = booking.address ? mapsUrl(booking.address, booking.location) : null
 
@@ -284,7 +287,8 @@ export function clientConfirmedEmail(booking: BookingForEmail): {
 
       <div style="text-align:center;">
         ${map ? button(map, "Abrir no Google Maps") : ""}
-        ${button(gcalUrl, "Adicionar ao calendário", "ghost")}
+        ${button(gcalUrl, "Google Calendar", "ghost")}
+        ${button(icsUrl(booking), "iPhone / Outlook", "ghost")}
         ${whatsappButtonHtml() ? `<br>${whatsappButtonHtml()}` : ""}
         <br>
         ${button(cancelUrl, "Cancelar marcação", "danger")}
@@ -306,8 +310,7 @@ export function clientReminderEmail(booking: BookingForEmail): {
   subject: string
   html: string
 } {
-  const site = getSiteUrl()
-  const cancelUrl = `${site}/api/bookings/${booking.id}/cancel?token=${booking.clientToken}`
+  const cancelUrl = cancelPageUrl(booking)
   const gcalUrl = calendarUrl(booking)
   const map = booking.address ? mapsUrl(booking.address, booking.location) : null
 
@@ -318,7 +321,7 @@ export function clientReminderEmail(booking: BookingForEmail): {
     ${headerHtml}
     <div style="${cardStyle}">
       <p style="margin:0 0 12px 0;font-size:16px;">Olá, <strong>${escape(booking.clientName)}</strong>!</p>
-      <p style="margin:0 0 12px 0;font-size:16px;line-height:1.5;">Só para lembrar: tens marcação daqui a cerca de <strong>24 horas</strong>.</p>
+      <p style="margin:0 0 12px 0;font-size:16px;line-height:1.5;">Só para lembrar: tens marcação <strong>amanhã às ${formatLisbon(booking.startUtc, "HH:mm")}</strong>.</p>
 
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;">
         ${detailRow("Quando", booking.whenLocal)}
@@ -328,7 +331,8 @@ export function clientReminderEmail(booking: BookingForEmail): {
 
       <div style="text-align:center;">
         ${map ? button(map, "Abrir no Google Maps") : ""}
-        ${button(gcalUrl, "Adicionar ao calendário", "ghost")}
+        ${button(gcalUrl, "Google Calendar", "ghost")}
+        ${button(icsUrl(booking), "iPhone / Outlook", "ghost")}
         ${whatsappButtonHtml() ? `<br>${whatsappButtonHtml()}` : ""}
         <br>
         ${button(cancelUrl, "Cancelar marcação", "danger")}
@@ -344,7 +348,17 @@ export function clientReminderEmail(booking: BookingForEmail): {
   return { subject, html }
 }
 
-function calendarUrl(booking: BookingForEmail): string {
+/** The client's booking page, opened on the "cancel it?" question. */
+export function cancelPageUrl(booking: BookingForEmail): string {
+  return `${getSiteUrl()}/marcacao/${booking.id}?token=${booking.clientToken}&cancelar=1`
+}
+
+/** .ics file of the booking, for Apple Calendar / Outlook (see /api/bookings/[id]/ics). */
+export function icsUrl(booking: BookingForEmail): string {
+  return `${getSiteUrl()}/api/bookings/${booking.id}/ics?token=${booking.clientToken}`
+}
+
+export function calendarUrl(booking: BookingForEmail): string {
   return gcalAddUrl({
     title: `Tarzan's Barbershop: ${booking.serviceName}`,
     start: booking.startUtc,
@@ -387,24 +401,38 @@ export function clientCancelledEmail(booking: BookingForEmail): {
   return { subject, html }
 }
 
-/** Email sent to admin when the customer cancels via the email link */
-export function adminCancelledByClientEmail(booking: BookingForEmail): {
+/** "3 h", "menos de 1 h" — how long before the booking something happened. */
+function hoursBeforeText(hours: number): string {
+  return hours < 1 ? "menos de 1 h" : `${Math.floor(hours)} h`
+}
+
+/**
+ * Email sent to admin when the customer cancels (from the email link or
+ * their account). Flags cancellations under 12 hours before (house rules).
+ */
+export function adminCancelledByClientEmail(
+  booking: BookingForEmail,
+  opts: { hoursBefore: number; wasConfirmed: boolean },
+): {
   subject: string
   html: string
 } {
-  const subject = `Cliente cancelou: ${booking.serviceName}, ${booking.whenLocal}`
+  const late = opts.wasConfirmed && opts.hoursBefore < 12
+  const subject = `${late ? "Cancelamento em cima da hora" : "Cliente cancelou"}: ${booking.serviceName}, ${booking.whenLocal}`
   const html = `<!DOCTYPE html>
 <html><body style="${baseStyle}">
   <div style="max-width:600px;margin:0 auto;">
     ${headerHtml}
     <div style="${cardStyle}">
       <h2 style="margin:0 0 16px 0;font-family:${SLAB};font-weight:900;color:${DANGER};">Cliente cancelou marcação</h2>
+      ${late ? `<p style="margin:0 0 16px 0;padding:10px 12px;background:${YELLOW};border:2px solid ${INK};border-radius:6px;font-weight:700;">Cancelou ${hoursBeforeText(opts.hoursBefore)} antes da hora (as regras pedem pelo menos 12 h).</p>` : ""}
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         ${detailRow("Cliente", escape(booking.clientName))}
         ${detailRow("Telefone", `+${booking.clientPhone}`)}
         ${detailRow("Serviço", booking.serviceName)}
         ${detailRow("Quando", booking.whenLocal)}
         ${detailRow("Cidade", booking.location)}
+        ${detailRow("Cancelou", `${hoursBeforeText(opts.hoursBefore)} antes`)}
       </table>
       <p style="font-size:12px;color:${MUTED};margin:16px 0 0;">O slot ficou novamente disponível para outras marcações.</p>
     </div>

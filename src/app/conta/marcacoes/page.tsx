@@ -8,7 +8,9 @@ import { formatLisbon } from "@/lib/tz"
 import { getLocationAddress, mapsUrl } from "@/lib/addresses"
 import { cn } from "@/lib/utils"
 import { Card, ContaShell, Notice } from "../_components/ContaShell"
-import { ConfirmLink } from "../_components/ConfirmSubmit"
+import { ActionForm } from "@/components/ActionForm"
+import { LATE_CANCEL_HOURS, hoursUntil } from "@/lib/booking-status"
+import { cancelByClientAction } from "../../marcacao/[id]/actions"
 
 export const metadata: Metadata = { title: "As minhas marcações", robots: "noindex" }
 export const dynamic = "force-dynamic"
@@ -23,7 +25,7 @@ const STATUS: Record<string, { label: string; className: string }> = {
 }
 
 interface PageProps {
-  searchParams: Promise<{ pedido?: string }>
+  searchParams: Promise<{ pedido?: string; cancelada?: string }>
 }
 
 /** Upcoming bookings (status, address once confirmed, cancel) and history. */
@@ -43,6 +45,12 @@ export default async function MarcacoesPage({ searchParams }: PageProps) {
 
   return (
     <ContaShell name={client.name} active="/conta/marcacoes">
+      {sp.cancelada === "1" && <Notice tone="ok">Marcação cancelada. O barbeiro já foi avisado.</Notice>}
+      {sp.cancelada && sp.cancelada !== "1" && (
+        <Notice tone="error">
+          {sp.cancelada === "past" ? "Essa marcação já passou, já não dá para cancelar." : "Essa marcação já estava cancelada."}
+        </Notice>
+      )}
       {sp.pedido && (
         <Notice tone="ok">
           Pedido enviado! Fica pendente até ser confirmado e recebes um email nessa altura.
@@ -91,13 +99,23 @@ export default async function MarcacoesPage({ searchParams }: PageProps) {
                     <Link href={`/marcacao/${b.id}?token=${b.clientToken}`} className="btn-ghost px-3 py-1.5 text-sm">
                       Detalhes
                     </Link>
-                    <ConfirmLink
-                      href={`/api/bookings/${b.id}/cancel?token=${b.clientToken}`}
-                      warning="Cancelar esta marcação?"
+                    <ActionForm
+                      action={cancelByClientAction}
+                      fields={{ id: b.id, token: b.clientToken, from: "conta" }}
+                      confirm={{
+                        title: "Cancelar a marcação?",
+                        body:
+                          b.status === "CONFIRMED" && hoursUntil(b.startUtc, now) < LATE_CANCEL_HOURS
+                            ? `Faltam menos de ${LATE_CANCEL_HOURS} horas. Podes cancelar na mesma, mas cancelamentos em cima da hora podem impedir marcações futuras.`
+                            : "O barbeiro é avisado e a hora fica livre.",
+                        confirmLabel: "Sim, cancelar",
+                        cancelLabel: "Não, manter",
+                        danger: true,
+                      }}
                       className="btn-ghost border-danger px-3 py-1.5 text-sm text-danger hover:bg-danger/5"
                     >
                       Cancelar
-                    </ConfirmLink>
+                    </ActionForm>
                   </div>
                 </Card>
               </li>

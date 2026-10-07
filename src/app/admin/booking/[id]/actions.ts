@@ -3,9 +3,51 @@
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { emailLinkStillValid, isAdmin } from "@/lib/admin-auth"
+import { cancelBookingByBarber, confirmBooking, type StatusChange } from "@/lib/booking-status"
 import { deleteEvent } from "@/lib/gcal"
 import { formatLisbon } from "@/lib/tz"
 import { parseEuros } from "../../_lib"
+
+/**
+ * "Confirmar" / "Recusar" / "Cancelar marcação" — from the agenda (form
+ * field from=agenda, back=<agenda URL>) or the booking page (also reached
+ * from the email links, signed in or with the booking's token).
+ */
+export async function confirmBookingAction(form: FormData): Promise<void> {
+  await changeStatus(form, confirmBooking, "confirmed")
+}
+
+export async function cancelBookingAction(form: FormData): Promise<void> {
+  await changeStatus(form, cancelBookingByBarber, "cancelled")
+}
+
+async function changeStatus(
+  form: FormData,
+  change: (id: string) => Promise<StatusChange>,
+  done: "confirmed" | "cancelled",
+): Promise<void> {
+  const id = String(form.get("id") ?? "")
+  const token = String(form.get("token") ?? "")
+  const fromAgenda = form.get("from") === "agenda"
+  const back = String(form.get("back") ?? "")
+  const agenda = (flash: string) => {
+    const url = new URL(back.startsWith("/admin") ? back : "/admin", "http://x")
+    url.searchParams.set("flash", flash)
+    return url.pathname + url.search
+  }
+
+  const booking = await prisma.booking.findUnique({ where: { id }, select: { adminToken: true, startUtc: true } })
+  if (!booking) redirect(fromAgenda ? `${agenda("error")}&code=not-found` : `/admin/booking/${id}?error=not-found`)
+  await assertAllowed(booking, token)
+
+  const result = await change(id)
+  const page = `/admin/booking/${id}?token=${booking.adminToken}`
+  if (result.ok) redirect(fromAgenda ? agenda(done) : `${page}&${done === "confirmed" ? "confirmed" : "rejected"}=1`)
+  if (result.reason === "already-confirmed" || result.reason === "already-cancelled") {
+    redirect(fromAgenda ? agenda(result.reason) : `${page}&already=1`)
+  }
+  redirect(fromAgenda ? `${agenda("error")}&code=${result.reason}` : `/admin/booking/${id}?error=${result.reason}`)
+}
 
 /** Updates the tip and notes of a booking (no email is sent). */
 export async function updateBooking(form: FormData): Promise<void> {

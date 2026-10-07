@@ -110,7 +110,9 @@ try {
       // Hide the Next.js dev-mode indicator
       await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" })
       const file = path.join(outDir, fileName(p, vp))
-      await page.screenshot({ path: file, fullPage: !fold })
+      // caret "initial": hiding it injects styles, which React reports as a
+      // hydration mismatch if the page hasn't hydrated yet
+      await page.screenshot({ path: file, fullPage: !fold, caret: "initial" })
       console.log(`${res?.status() ?? "?"} ${page.url().replace(base, "")} -> ${path.relative(root, file)}`)
     }
     await context.close()

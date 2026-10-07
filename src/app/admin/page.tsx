@@ -5,6 +5,7 @@ import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
 import { formatPrice } from "@/lib/services"
 import { LOCATIONS, isLocationOpenOn, ymdDayOfWeek, ymdPlusDays } from "@/lib/schedule"
 import { cn } from "@/lib/utils"
+import { ActionForm } from "@/components/ActionForm"
 import { ContactLinks } from "./_components/ContactLinks"
 import { FlashBanner } from "./_components/FlashBanner"
 import { MonthCalendar, monthGrid } from "./_components/MonthCalendar"
@@ -19,6 +20,7 @@ import {
   type BookingWithClient,
 } from "./_lib"
 import { requireAdmin } from "@/lib/admin-auth"
+import { cancelBookingAction, confirmBookingAction } from "./booking/[id]/actions"
 
 export const dynamic = "force-dynamic"
 
@@ -120,6 +122,8 @@ export default async function AgendaPage({ searchParams }: PageProps) {
   const flash = sp.flash ? flashMessage(sp.flash, sp.code) : undefined
   // City filter keeps the month/day being looked at
   const cityHref = (c?: string) => href({ city: c, month, day: selected })
+  // The agenda view to come back to after confirming / refusing
+  const here = href({ city, month, day: sp.dia ? selected : undefined })
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -187,6 +191,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
                   <UpcomingItem
                     key={b.id}
                     b={b}
+                    back={here}
                     now={now}
                     today={p.today}
                     showCity={!city}
@@ -212,7 +217,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
               <SectionTitle>Mais marcações</SectionTitle>
               <ul className="grid grid-cols-2 gap-2.5">
                 {upcoming.slice(UPCOMING_BESIDE_CALENDAR).map((b) => (
-                  <UpcomingItem key={b.id} b={b} now={now} today={p.today} showCity={!city} />
+                  <UpcomingItem key={b.id} b={b} back={here} now={now} today={p.today} showCity={!city} />
                 ))}
               </ul>
             </section>
@@ -295,12 +300,15 @@ function sum(bookings: { servicePrice: number; tipEur: number }[]): number {
 /** One entry of "Próximas marcações"; pending requests get the actions. */
 function UpcomingItem({
   b,
+  back,
   now,
   today,
   showCity,
   className,
 }: {
   b: BookingWithClient
+  /** The agenda URL to come back to after an action */
+  back: string
   now: Date
   today: string
   showCity: boolean
@@ -309,8 +317,7 @@ function UpcomingItem({
   const pending = b.status === "PENDING"
   const past = b.startUtc < now
   const day = relativeDay(b.startUtc, today) ?? formatLisbon(b.startUtc, "EEE, d MMM")
-  const action = (kind: "confirm" | "reject") =>
-    `/api/admin/bookings/${b.id}/${kind}?token=${b.adminToken}&from=admin`
+  const fields = { id: b.id, token: b.adminToken, from: "agenda", back }
 
   return (
     <li
@@ -346,16 +353,25 @@ function UpcomingItem({
           )}
           <div className="mt-2 flex items-center gap-2">
             {!past && (
-              <a href={action("confirm")} className="btn btn-sm bg-success text-paper">
+              <ActionForm action={confirmBookingAction} fields={fields} className="btn btn-sm bg-success text-paper">
                 Confirmar
-              </a>
+              </ActionForm>
             )}
-            <a
-              href={action("reject")}
+            <ActionForm
+              action={cancelBookingAction}
+              fields={fields}
+              confirm={{
+                title: "Recusar o pedido?",
+                body: `${b.client.name}, ${formatLisbon(b.startUtc, "EEEE, d 'de' MMMM 'às' HH:mm")}. ${
+                  b.email ? "O cliente recebe um email a avisar." : "Este cliente não tem email: avisa-o tu."
+                }`,
+                confirmLabel: "Recusar",
+                danger: true,
+              }}
               className="btn-ghost border-danger px-3 py-1 text-sm text-danger hover:bg-danger/5"
             >
               Recusar
-            </a>
+            </ActionForm>
             <span className="ml-auto">
               <ContactLinks phone={b.client.phone} />
             </span>
