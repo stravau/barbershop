@@ -9,7 +9,9 @@
     "db:push": "prisma db push",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "seed:dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev-seed.mjs",
+    "shot": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/screenshot.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -29,6 +31,7 @@
     "zod": "^4.4.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

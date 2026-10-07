@@ -51,3 +51,6 @@ google-credentials.json
 *.db-journal
 prisma/*.db
 prisma/*.db-journal
+
+# screenshots from scripts/screenshot.mjs
+/.screenshots
