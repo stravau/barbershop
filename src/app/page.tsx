@@ -62,7 +62,7 @@ function Hero() {
           width={600}
           height={471}
           sizes="(min-width: 768px) 1100px, 160vw"
-          className="w-[150vw] max-w-none opacity-[0.08] select-none md:h-[92%] md:w-auto"
+          className="w-[120vw] max-w-none opacity-[0.06] select-none md:h-[75%] md:w-auto"
         />
       </div>
       <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:py-16 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
