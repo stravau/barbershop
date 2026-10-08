@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { formatPrice, formatPriceShort } from "@/lib/services"
+import { CARD_SIZE } from "@/lib/loyalty"
 import { cn } from "@/lib/utils"
 
 const STATUS: Record<string, { label: string; className: string }> = {
@@ -7,6 +8,7 @@ const STATUS: Record<string, { label: string; className: string }> = {
   CONFIRMED: { label: "Confirmada", className: "bg-success/10 text-success border-success/40" },
   DONE: { label: "Realizada", className: "bg-ink/5 text-ink/70 border-ink/20" },
   CANCELLED: { label: "Cancelada", className: "bg-danger/10 text-danger border-danger/40" },
+  NO_SHOW: { label: "Faltou", className: "bg-ink text-paper border-ink" },
 }
 
 /** Status badge. Pass `done` for a confirmed booking whose time has passed. */
@@ -132,5 +134,23 @@ export function Empty({ children }: { children: React.ReactNode }) {
     <div className="rounded-lg border-2 border-dashed border-ink/20 p-8 text-center text-muted">
       {children}
     </div>
+  )
+}
+
+/** Stamps on the loyalty card (see lib/loyalty.ts). */
+export function LoyaltyBadge({ stamped }: { stamped: number }) {
+  if (stamped === 0) return null
+  const nextFree = stamped === CARD_SIZE - 1
+  const label =
+    stamped >= CARD_SIZE ? "cartão completo" : nextFree ? `${stamped}/${CARD_SIZE} · próximo grátis` : `${stamped}/${CARD_SIZE}`
+  return (
+    <span
+      className={cn(
+        "caps ml-1.5 inline-block rounded px-1.5 py-0.5 text-[0.7rem]",
+        nextFree ? "bg-yellow ring-1 ring-ink" : "bg-ink/10",
+      )}
+    >
+      {label}
+    </span>
   )
 }

@@ -138,13 +138,19 @@ export async function deleteEvent(eventId: string): Promise<void> {
  */
 export async function updateEvent(
   eventId: string,
-  patch: { summary?: string; description?: string },
+  patch: { summary?: string; description?: string; location?: string; startUtc?: Date; endUtc?: Date },
 ): Promise<void> {
   if (!hasCredentials()) return
   const cal = getClient()
+  const { startUtc, endUtc, ...text } = patch
   await cal.events.patch({
     calendarId: process.env.GCAL_CALENDAR_ID!,
     eventId,
-    requestBody: patch,
+    requestBody: {
+      ...text,
+      // A rescheduled booking moves its event too
+      ...(startUtc && { start: { dateTime: startUtc.toISOString(), timeZone: "Europe/Lisbon" } }),
+      ...(endUtc && { end: { dateTime: endUtc.toISOString(), timeZone: "Europe/Lisbon" } }),
+    },
   })
 }

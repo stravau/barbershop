@@ -6,13 +6,14 @@ export type BookingWithClient = Prisma.BookingGetPayload<{ include: { client: tr
 /**
  * Statuses that count as a real appointment. Nothing moves bookings to
  * COMPLETED yet, so a CONFIRMED booking whose start time has passed is
- * treated as done ("realizada") everywhere in the admin.
+ * treated as done ("realizada") everywhere in the admin — unless the barber
+ * marks it NO_SHOW ("Faltou"), which takes it out of visits and takings.
  */
 export const BOOKED_STATUSES = ["CONFIRMED", "COMPLETED"]
+export const NO_SHOW = "NO_SHOW"
 
-export function isDone(b: { status: string; startUtc: Date }, now: Date): boolean {
-  return BOOKED_STATUSES.includes(b.status) && b.startUtc < now
-}
+/** A visit that happened (see lib/loyalty.ts). */
+export { happened as isDone } from "@/lib/loyalty"
 
 /** What was actually received for a booking: service price + tip. */
 export function received(b: { servicePrice: number; tipEur: number }): number {

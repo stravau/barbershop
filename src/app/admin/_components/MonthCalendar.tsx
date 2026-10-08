@@ -169,6 +169,7 @@ function tone(
   pending = b?.status === "PENDING",
 ): string {
   if (pending) return kind === "dot" ? "bg-yellow ring-1 ring-ink" : "bg-yellow ring-1 ring-ink/60"
+  if (b?.status === "NO_SHOW") return kind === "dot" ? "bg-paper ring-1 ring-ink/40" : "bg-paper text-muted line-through ring-1 ring-ink/20"
   if (location === "lisboa") return kind === "dot" ? "bg-jungle" : "bg-jungle text-paper"
   return kind === "dot" ? "bg-ink/60" : "bg-ink/10"
 }

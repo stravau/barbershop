@@ -22,6 +22,7 @@ const STATUS: Record<string, { label: string; className: string }> = {
   COMPLETED: { label: "Concluída", className: "bg-ink text-paper" },
   DONE: { label: "Concluída", className: "bg-ink text-paper" },
   EXPIRED: { label: "Não confirmada", className: "bg-paper-dark" },
+  NO_SHOW: { label: "Faltou", className: "bg-paper-dark" },
 }
 
 interface PageProps {

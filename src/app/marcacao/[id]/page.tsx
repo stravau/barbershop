@@ -68,6 +68,7 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
   const isCancelled = booking.status === "CANCELLED"
   const isPending = booking.status === "PENDING"
   const isCompleted = booking.status === "COMPLETED"
+  const isNoShow = booking.status === "NO_SHOW"
   const isUpcoming = booking.startUtc > now
   const canCancel = (isPending || isConfirmed) && isUpcoming
   const lateCancel = isConfirmed && hoursUntil(booking.startUtc, now) < LATE_CANCEL_HOURS
@@ -132,6 +133,7 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
             isPending && "bg-yellow",
             isCancelled && "bg-danger text-paper",
             isCompleted && "bg-ink text-paper",
+            isNoShow && "bg-paper-dark",
           )}
         >
           {isConfirmed
@@ -140,7 +142,9 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
               ? "Cancelada"
               : isCompleted
                 ? "Concluída"
-                : "Pendente"}
+                : isNoShow
+                  ? "Faltou"
+                  : "Pendente"}
         </span>
         <h1 className="print-shadow mt-4 text-4xl sm:text-5xl">
           {isConfirmed
@@ -149,7 +153,9 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
               ? "Marcação cancelada"
               : isCompleted
                 ? "Até à próxima!"
-                : "À espera de confirmação"}
+                : isNoShow
+                  ? "Ficou por fazer"
+                  : "À espera de confirmação"}
         </h1>
         <p className="mt-4 text-lg text-ink/80">
           {isConfirmed && `Obrigado pela confiança. Até ${whenForCopy}!`}
@@ -158,6 +164,7 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
           {isCancelled &&
             "Esta marcação foi cancelada. Se quiseres, marca outra hora aqui em baixo."}
           {isCompleted && "Obrigado pela visita!"}
+          {isNoShow && "Esta marcação ficou registada como falta. Quando quiseres, marca outra hora."}
         </p>
       </div>
 
@@ -225,7 +232,7 @@ export default async function MarcacaoPage({ params, searchParams }: PageProps) 
       </div>
 
       <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-        {isCancelled || isCompleted ? (
+        {isCancelled || isCompleted || isNoShow ? (
           <Link href="/marcar" className="btn">
             Fazer nova marcação
           </Link>

@@ -147,6 +147,15 @@ export function ManualBookingForm({ today }: { today: string }) {
           {state.error}
         </p>
       )}
+      {state.overlap && (
+        <div className="rounded-md border-2 border-ink bg-yellow/30 px-3 py-2">
+          <p className="font-semibold">Já há uma marcação a essa hora: {state.overlap}.</p>
+          <label className="mt-1 flex items-center gap-2 text-sm">
+            <input type="checkbox" name="force" className="accent-[var(--ink)]" />
+            Marcar mesmo assim
+          </label>
+        </div>
+      )}
 
       <button type="submit" disabled={pending} className="btn">
         {pending ? "A guardar…" : "Guardar marcação"}

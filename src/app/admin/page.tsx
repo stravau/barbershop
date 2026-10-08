@@ -12,6 +12,7 @@ import { MonthCalendar, monthGrid } from "./_components/MonthCalendar"
 import { CityTag, FilterChips, PriceWithTip, SectionTitle, Stat, StatusPill } from "./_components/ui"
 import {
   BOOKED_STATUSES,
+  NO_SHOW,
   bookingHref,
   groupBy,
   parseCity,
@@ -73,7 +74,7 @@ export default async function AgendaPage({ searchParams }: PageProps) {
     }),
     prisma.booking.findMany({
       where: {
-        status: { in: [...BOOKED_STATUSES, "PENDING"] },
+        status: { in: [...BOOKED_STATUSES, "PENDING", NO_SHOW] },
         startUtc: { gte: gridFrom, lt: gridTo },
         ...byCity,
       },
@@ -258,7 +259,9 @@ function DayPanel({
 }) {
   const noon = new Date(`${day}T12:00:00Z`)
   const rel = relativeDay(noon, today)
-  const booked = items.filter((b) => b.status !== "PENDING")
+  const booked = items.filter((b) => BOOKED_STATUSES.includes(b.status))
+  const pendingCount = items.filter((b) => b.status === "PENDING").length
+  const noShows = items.length - booked.length - pendingCount
   return (
     <div>
       <div className="border-b-2 border-ink pb-1.5">
@@ -274,7 +277,8 @@ function DayPanel({
           <p className="mt-0.5 text-sm text-muted">
             {booked.length} {booked.length === 1 ? "marcação" : "marcações"} ·{" "}
             {formatPrice(sum(booked))}
-            {items.length > booked.length && <> · {items.length - booked.length} por confirmar</>}
+            {pendingCount > 0 && <> · {pendingCount} por confirmar</>}
+            {noShows > 0 && <> · {noShows} {noShows === 1 ? "falta" : "faltas"}</>}
           </p>
         )}
       </div>
@@ -392,6 +396,7 @@ function DayRow({
   showCity: boolean
 }) {
   const done = b.startUtc < now && b.status !== "PENDING"
+  const noShow = b.status === NO_SHOW
   return (
     <li className={cn("py-2.5", done && "opacity-50")}>
       <div className="flex items-baseline justify-between gap-2">
@@ -400,13 +405,13 @@ function DayRow({
           <span className="text-muted">–{formatLisbon(b.endUtc, "HH:mm")}</span>
         </span>
         <span className="flex items-center gap-1.5">
-          {b.status === "PENDING" && <StatusPill status="PENDING" />}
+          {(b.status === "PENDING" || noShow) && <StatusPill status={b.status} />}
           {showCity && <CityTag location={b.location} />}
           <PriceWithTip price={b.servicePrice} tip={b.tipEur} />
         </span>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <Link href={bookingHref(b)} className="min-w-0 hover:underline">
+        <Link href={bookingHref(b)} className={cn("min-w-0 hover:underline", noShow && "line-through")}>
           <span className="font-semibold">{b.client.name}</span>
           <span className="text-muted"> · {b.serviceName}</span>
         </Link>

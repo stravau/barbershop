@@ -11,9 +11,16 @@ import { ActionForm } from "@/components/ActionForm"
 import { ContactLinks } from "../../_components/ContactLinks"
 import { FlashBanner } from "../../_components/FlashBanner"
 import { DeleteBookingButton } from "./DeleteBookingButton"
-import { cancelBookingAction, confirmBookingAction, updateBooking } from "./actions"
+import { RescheduleForm } from "./RescheduleForm"
+import {
+  cancelBookingAction,
+  confirmBookingAction,
+  markNoShowAction,
+  undoNoShowAction,
+  updateBooking,
+} from "./actions"
 import { CityTag, StatusPill } from "../../_components/ui"
-import { isDone, received } from "../../_lib"
+import { NO_SHOW, isDone, received } from "../../_lib"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -92,6 +99,8 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
     .filter((d) => d.getTime() !== booking.startUtc.getTime())
     .sort((a, b) => b.getTime() - a.getTime())[0]
   const cancellations = booking.client.bookings.filter((b) => b.status === "CANCELLED").length
+  const noShows = booking.client.bookings.filter((b) => b.status === NO_SHOW).length
+  const isNoShow = booking.status === NO_SHOW
 
   const notice = confirmed
     ? { tone: "success" as const, text: `Marcação confirmada.${booking.email ? ` Email enviado para ${booking.email}.` : ""}` }
@@ -99,11 +108,9 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
       ? { tone: "danger" as const, text: `Marcação cancelada.${booking.email ? ` Email enviado para ${booking.email}.` : ""}` }
       : already
         ? { tone: "muted" as const, text: "Esta marcação já tinha sido tratada, não mudou nada." }
-        : sp.saved === "1"
-          ? { tone: "success" as const, text: "Alterações guardadas." }
-          : sp.saved === "invalid"
-            ? { tone: "danger" as const, text: "Gorjeta inválida. Escreve só o valor, por exemplo 10 ou 2,50." }
-            : null
+        : sp.saved && SAVED[String(sp.saved)]
+          ? SAVED[String(sp.saved)]
+          : null
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -162,6 +169,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
         <div className="rounded-lg border-2 border-ink bg-card p-6 shadow-[6px_6px_0_var(--ink)] sm:p-8">
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill status={booking.status} done={isDone(booking, now)} />
+            {isNoShow && <span className="text-sm text-muted">não conta como visita</span>}
             <CityTag location={booking.location} />
           </div>
           <h1 className="mt-3 text-3xl">{booking.serviceName}</h1>
@@ -213,9 +221,41 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             </div>
           )}
 
+          {isConfirmed && isPast && (
+            <div className="mt-5">
+              <ActionForm
+                action={markNoShowAction}
+                fields={fields}
+                confirm={{
+                  title: "O cliente faltou?",
+                  body: "A marcação deixa de contar como visita, para o cartão e para a faturação. Dá para desfazer.",
+                  confirmLabel: "Sim, faltou",
+                }}
+                className="btn-ghost px-3 py-1.5 text-sm"
+              >
+                Faltou
+              </ActionForm>
+            </div>
+          )}
+          {isNoShow && (
+            <div className="mt-5">
+              <ActionForm action={undoNoShowAction} fields={fields} className="btn-ghost px-3 py-1.5 text-sm">
+                Afinal veio
+              </ActionForm>
+            </div>
+          )}
+
           <div className="mt-7 border-t-2 border-ink pt-5">
             <div className="caps mb-2 text-xs text-muted">Cliente</div>
-            <div className="text-xl font-semibold">{booking.client.name}</div>
+            <div className="text-xl font-semibold">
+              {hasSession ? (
+                <Link href={`/admin/clientes/${booking.client.id}`} className="hover:underline">
+                  {booking.client.name}
+                </Link>
+              ) : (
+                booking.client.name
+              )}
+            </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-4">
               <ContactLinks phone={booking.client.phone} showNumber />
               {booking.email && (
@@ -228,6 +268,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
               {visits.length} {visits.length === 1 ? "visita" : "visitas"}
               {lastVisit && <> · última a {formatLisbon(lastVisit, "dd/MM/yyyy")}</>}
               {cancellations > 0 && <> · {cancellations} cancelada{cancellations > 1 ? "s" : ""}</>}
+              {noShows > 0 && <> · {noShows} {noShows === 1 ? "falta" : "faltas"}</>}
             </p>
             {booking.notes && (
               <p className="mt-4 rounded-md bg-yellow/25 px-3 py-2 italic">“{booking.notes}”</p>
@@ -244,7 +285,19 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             <div className="caps mb-2 text-xs text-muted">Editar</div>
             <input type="hidden" name="id" value={booking.id} />
             <input type="hidden" name="token" value={booking.adminToken} />
-            <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[8rem_8rem_1fr]">
+              <label className="block">
+                <span className="mb-1 block text-sm font-semibold">Preço</span>
+                <span className="relative block">
+                  <input
+                    name="price"
+                    inputMode="decimal"
+                    defaultValue={String(booking.servicePrice).replace(".", ",")}
+                    className="input pr-8"
+                  />
+                  <span className="absolute top-1/2 right-3 -translate-y-1/2 text-muted">€</span>
+                </span>
+              </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-semibold">Gorjeta</span>
                 <span className="relative block">
@@ -258,15 +311,28 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
                   <span className="absolute top-1/2 right-3 -translate-y-1/2 text-muted">€</span>
                 </span>
               </label>
-              <label className="block">
+              <label className="col-span-2 block sm:col-span-1">
                 <span className="mb-1 block text-sm font-semibold">Notas</span>
                 <input name="notes" defaultValue={booking.notes ?? ""} className="input" />
               </label>
             </div>
+            <p className="mt-1.5 text-xs text-muted">O corte grátis do cartão regista-se com preço 0.</p>
             <button type="submit" className="btn btn-sm mt-3">
               Guardar
             </button>
           </form>
+
+          {(isPending || isConfirmed) && (
+            <RescheduleForm
+              id={booking.id}
+              token={booking.adminToken}
+              date={formatLisbon(booking.startUtc, "yyyy-MM-dd")}
+              time={formatLisbon(booking.startUtc, "HH:mm")}
+              location={booking.location}
+              services={booking.serviceId.split("+")}
+              hasEmail={!!booking.email}
+            />
+          )}
 
           <div className="mt-7 border-t border-ink/15 pt-4">
             <DeleteBookingButton id={booking.id} token={booking.adminToken} />
@@ -296,10 +362,22 @@ function errorMessage(code: string): string {
   }
 }
 
+/** Messages for ?saved=… after the edit, no-show and reschedule actions. */
+const SAVED: Record<string, { tone: "success" | "danger" | "muted"; text: string }> = {
+  "1": { tone: "success", text: "Alterações guardadas." },
+  invalid: { tone: "danger", text: "Valor inválido. Escreve só o valor, por exemplo 10 ou 2,50." },
+  falta: { tone: "muted", text: "Marcada como falta. Já não conta como visita." },
+  veio: { tone: "success", text: "Voltou a contar como visita." },
+  remarcada: { tone: "success", text: "Marcação mudada." },
+  "remarcada-email": { tone: "success", text: "Marcação mudada. O cliente foi avisado por email." },
+  "remarcada-email-falhou": { tone: "danger", text: "Marcação mudada, mas o email ao cliente falhou. Avisa-o tu." },
+}
+
 function statusText(status: string, past: boolean): string {
   if (status === "CANCELLED") return "cancelada"
   if (status === "CONFIRMED") return past ? "realizada" : "confirmada"
   if (status === "PENDING") return past ? "pendente, a hora já passou" : "pendente"
+  if (status === NO_SHOW) return "faltou"
   return status.toLowerCase()
 }
 

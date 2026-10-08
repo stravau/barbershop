@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils"
 import { ContactLinks } from "../_components/ContactLinks"
 import { FlashBanner } from "../_components/FlashBanner"
 import { DeleteClientButton } from "./DeleteClientButton"
-import { Empty, FilterChips, Stat } from "../_components/ui"
-import { isDone, received } from "../_lib"
+import { Empty, FilterChips, LoyaltyBadge, Stat } from "../_components/ui"
+import { NO_SHOW, isDone, received } from "../_lib"
+import { stamps } from "@/lib/loyalty"
 import { findDuplicates } from "@/lib/clients"
 import { requireAdmin } from "@/lib/admin-auth"
 
@@ -24,7 +25,8 @@ interface PageProps {
 
 /**
  * Client list. Visits, spend and the loyalty card are derived from the
- * bookings made on the site (a past confirmed booking counts as a visit).
+ * bookings (a past confirmed booking counts as a visit, unless it was
+ * marked as a no-show). Each name opens the client's page.
  */
 export default async function ClientesPage({ searchParams }: PageProps) {
   await requireAdmin("/admin/clientes")
@@ -48,7 +50,7 @@ export default async function ClientesPage({ searchParams }: PageProps) {
     prisma.client.findMany({
       where: search,
       include: {
-        bookings: { select: { startUtc: true, status: true, servicePrice: true, tipEur: true } },
+        bookings: { select: { startUtc: true, status: true, serviceId: true, servicePrice: true, tipEur: true } },
       },
     }),
     prisma.client.count(),
@@ -71,10 +73,12 @@ export default async function ClientesPage({ searchParams }: PageProps) {
     return {
       ...c,
       visits: done.length,
+      stamps: stamps(c.bookings, now),
       spent: done.reduce((s, b) => s + received(b), 0),
       lastVisit: done.reduce<Date | null>((m, b) => (!m || b.startUtc > m ? b.startUtc : m), null),
       next: next?.startUtc ?? null,
       cancelled: c.bookings.filter((b) => b.status === "CANCELLED").length,
+      noShows: c.bookings.filter((b) => b.status === NO_SHOW).length,
     }
   })
 
@@ -171,17 +175,20 @@ export default async function ClientesPage({ searchParams }: PageProps) {
               className="grid grid-cols-2 items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_16.5rem]"
             >
               <div className="col-span-2 min-w-0 sm:col-span-1">
-                <div className="font-semibold">{c.name}</div>
+                <Link href={`/admin/clientes/${c.id}`} className="font-semibold hover:underline">
+                  {c.name}
+                </Link>
                 <div className="text-sm break-words text-muted">
                   {c.email ?? "sem email"}
                   {c.spent > 0 && <> · {formatPrice(c.spent)} no total</>}
                   {c.cancelled > 0 && <> · {c.cancelled} cancel.</>}
+                  {c.noShows > 0 && <> · {c.noShows} {c.noShows === 1 ? "falta" : "faltas"}</>}
                 </div>
               </div>
               <div className="text-sm">
                 <span className="font-semibold">{c.visits}</span>{" "}
                 <span className="text-muted">{c.visits === 1 ? "visita" : "visitas"}</span>
-                <LoyaltyBadge visits={c.visits} />
+                <LoyaltyBadge stamped={c.stamps} />
               </div>
               <div className="text-sm">
                 <span className="text-muted sm:hidden">Última: </span>
@@ -200,24 +207,9 @@ export default async function ClientesPage({ searchParams }: PageProps) {
         </ul>
       )}
       <p className="mt-4 text-xs text-muted">
-        Visitas e cartão contam só as marcações feitas pelo site. O cartão é
-        válido apenas para o primeiro: ao sexto corte, é grátis.
+        O cartão conta os cortes feitos (as faltas não contam) e é válido apenas
+        para o primeiro: o sexto corte é grátis. Regista-o com preço 0.
       </p>
     </main>
-  )
-}
-
-function LoyaltyBadge({ visits }: { visits: number }) {
-  if (visits === 0) return null
-  const label = visits >= 6 ? "cartão completo" : visits === 5 ? "5/6 · próximo grátis" : `${visits}/6`
-  return (
-    <span
-      className={cn(
-        "caps ml-1.5 inline-block rounded px-1.5 py-0.5 text-[0.7rem]",
-        visits === 5 ? "bg-yellow ring-1 ring-ink" : "bg-ink/10",
-      )}
-    >
-      {label}
-    </span>
   )
 }

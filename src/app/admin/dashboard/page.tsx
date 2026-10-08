@@ -3,7 +3,7 @@ import { formatPrice } from "@/lib/services"
 import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "@/lib/tz"
 import type { Prisma } from "@/generated/prisma"
 import { SectionTitle, Stat } from "../_components/ui"
-import { BOOKED_STATUSES, cityName, groupBy, received } from "../_lib"
+import { BOOKED_STATUSES, NO_SHOW, cityName, groupBy, received } from "../_lib"
 import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
@@ -48,6 +48,7 @@ export default async function NumerosPage() {
     byCity,
     byService,
     cancelledMonth,
+    noShowMonth,
     bookedMonth,
     clientsTotal,
     clientsNew,
@@ -83,6 +84,9 @@ export default async function NumerosPage() {
       where: { status: "CANCELLED", startUtc: { gte: p.monthStart, lt: p.monthEnd } },
     }),
     prisma.booking.count({
+      where: { status: NO_SHOW, startUtc: { gte: p.monthStart, lt: p.monthEnd } },
+    }),
+    prisma.booking.count({
       where: { status: booked, startUtc: { gte: p.monthStart, lt: p.monthEnd } },
     }),
     prisma.client.count(),
@@ -112,7 +116,7 @@ export default async function NumerosPage() {
   )
   const maxMonth = Math.max(1, ...months.map((mo) => mo.total))
 
-  const monthTotal = cancelledMonth + bookedMonth
+  const monthTotal = cancelledMonth + noShowMonth + bookedMonth
   const cancelRate = monthTotal > 0 ? Math.round((cancelledMonth / monthTotal) * 100) : 0
   // Received = service prices + tips
   type Sums = { _sum: { servicePrice: number | null; tipEur?: number | null } }
@@ -216,14 +220,15 @@ export default async function NumerosPage() {
         </section>
 
         <section>
-          <SectionTitle aside={formatLisbon(now, "MMMM")}>Cancelamentos</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
-            <Stat label="Taxa" value={`${cancelRate}%`} />
+          <SectionTitle aside={formatLisbon(now, "MMMM")}>Cancelamentos e faltas</SectionTitle>
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="Taxa" value={`${cancelRate}%`} sub="canceladas" />
             <Stat
               label="Canceladas"
               value={String(cancelledMonth)}
               sub={`de ${monthTotal} marcações`}
             />
+            <Stat label="Faltas" value={String(noShowMonth)} sub="não vieram" />
           </div>
         </section>
       </div>

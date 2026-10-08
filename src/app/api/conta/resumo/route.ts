@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { currentClientSession } from "@/lib/client-auth"
 import { clientHabit, suggestSlots } from "@/lib/express"
 import { formatLisbon } from "@/lib/tz"
-import { isDone } from "@/app/admin/_lib"
+import { stamps } from "@/lib/loyalty"
 
 export type AccountSummary =
   | { signedIn: false }
@@ -53,7 +53,7 @@ export async function GET() {
   const now = new Date()
   const bookings = await prisma.booking.findMany({
     where: { clientId: client.id },
-    select: { status: true, startUtc: true, serviceName: true, servicePrice: true, location: true },
+    select: { status: true, startUtc: true, serviceId: true, serviceName: true, servicePrice: true, location: true },
     orderBy: { startUtc: "asc" },
   })
   const upcoming = bookings.find(
@@ -65,7 +65,7 @@ export async function GET() {
   const summary: AccountSummary = {
     signedIn: true,
     firstName: client.name.split(" ")[0],
-    visits: bookings.filter((b) => isDone(b, now)).length,
+    visits: stamps(bookings, now),
     next: upcoming
       ? {
           day: day(upcoming.startUtc),

@@ -6,13 +6,15 @@ import { prisma } from "@/lib/prisma"
 import { isAdmin } from "@/lib/admin-auth"
 import { buildCombo, validateSelection } from "@/lib/services"
 import { getWorkingHours, type LocationId } from "@/lib/schedule"
-import { combineDateTimeLisbon, getLisbonDayOfWeek } from "@/lib/tz"
+import { combineDateTimeLisbon, formatLisbon, getLisbonDayOfWeek } from "@/lib/tz"
 import { createEvent } from "@/lib/gcal"
 import { NO_PHONE_PREFIX, fixedPriceFor, normalizePhone } from "@/lib/clients"
 import { parseEuros } from "../_lib"
 
 export interface ManualBookingState {
   error?: string
+  /** Who the time overlaps with — the form then offers "Marcar mesmo assim". */
+  overlap?: string
 }
 
 /**
@@ -53,6 +55,19 @@ export async function createManualBooking(
   const hhmm = time || getWorkingHours(location, getLisbonDayOfWeek(date))?.start || "12:00"
   const startUtc = combineDateTimeLisbon(date, hhmm)
   const endUtc = addMinutes(startUtc, combo.durationMin)
+
+  // Two bookings at once is almost always a typo — ask before saving
+  if (form.get("force") !== "on") {
+    const clash = await prisma.booking.findFirst({
+      where: { status: { in: ["PENDING", "CONFIRMED"] }, startUtc: { lt: endUtc }, endUtc: { gt: startUtc } },
+      include: { client: true },
+    })
+    if (clash) {
+      return {
+        overlap: `${clash.client.name}, ${formatLisbon(clash.startUtc, "HH:mm")}–${formatLisbon(clash.endUtc, "HH:mm")}`,
+      }
+    }
+  }
 
   // Same phone = same client. Without a phone, reuse a phoneless client with
   // the same name so repeat visits still add up.

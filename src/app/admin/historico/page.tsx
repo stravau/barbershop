@@ -6,19 +6,19 @@ import { formatPrice } from "@/lib/services"
 import type { Prisma } from "@/generated/prisma"
 import { DeleteCancelledButton } from "../_components/DeleteCancelledButton"
 import { CityTag, Empty, FilterChips, PriceWithTip, StatusPill } from "../_components/ui"
-import { BOOKED_STATUSES, bookingHref, groupBy, isDone, parseCity, received } from "../_lib"
+import { BOOKED_STATUSES, NO_SHOW, bookingHref, groupBy, isDone, parseCity, received } from "../_lib"
 import { requireAdmin } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
-const STATES = ["todas", "realizadas", "canceladas"] as const
+const STATES = ["todas", "realizadas", "canceladas", "faltas"] as const
 type State = (typeof STATES)[number]
 
 interface PageProps {
   searchParams: Promise<{ estado?: string; cidade?: string }>
 }
 
-/** Past appointments and every cancellation, newest first, grouped by month. */
+/** Past appointments, no-shows and every cancellation, newest first, grouped by month. */
 export default async function HistoricoPage({ searchParams }: PageProps) {
   await requireAdmin("/admin/historico")
   const sp = await searchParams
@@ -28,9 +28,16 @@ export default async function HistoricoPage({ searchParams }: PageProps) {
 
   const done: Prisma.BookingWhereInput = { status: { in: BOOKED_STATUSES }, startUtc: { lt: now } }
   const cancelled: Prisma.BookingWhereInput = { status: "CANCELLED" }
+  const noShow: Prisma.BookingWhereInput = { status: NO_SHOW }
   const where: Prisma.BookingWhereInput = {
     ...(city ? { location: city } : {}),
-    ...(state === "realizadas" ? done : state === "canceladas" ? cancelled : { OR: [done, cancelled] }),
+    ...(state === "realizadas"
+      ? done
+      : state === "canceladas"
+        ? cancelled
+        : state === "faltas"
+          ? noShow
+          : { OR: [done, cancelled, noShow] }),
   }
 
   const [bookings, cancelledCount] = await Promise.all([
@@ -62,6 +69,7 @@ export default async function HistoricoPage({ searchParams }: PageProps) {
               { href: href("todas", city), label: "Todas", active: state === "todas" },
               { href: href("realizadas", city), label: "Realizadas", active: state === "realizadas" },
               { href: href("canceladas", city), label: "Canceladas", active: state === "canceladas" },
+              { href: href("faltas", city), label: "Faltas", active: state === "faltas" },
             ]}
           />
           <FilterChips
@@ -82,6 +90,7 @@ export default async function HistoricoPage({ searchParams }: PageProps) {
         [...months].map(([key, items], monthIdx) => {
           const realized = items.filter((b) => isDone(b, now))
           const cancelledInMonth = items.filter((b) => b.status === "CANCELLED").length
+          const noShowsInMonth = items.filter((b) => b.status === NO_SHOW).length
           const tipsInMonth = realized.reduce((s, b) => s + b.tipEur, 0)
           return (
             <details key={key} open={monthIdx < 2} className="group mb-4">
@@ -97,11 +106,13 @@ export default async function HistoricoPage({ searchParams }: PageProps) {
                   </strong>
                   {tipsInMonth > 0 && <> (inclui {formatPrice(tipsInMonth)} de gorjetas)</>}
                   {cancelledInMonth > 0 && <> · {cancelledInMonth} canceladas</>}
+                  {noShowsInMonth > 0 && <> · {noShowsInMonth} {noShowsInMonth === 1 ? "falta" : "faltas"}</>}
                 </span>
               </summary>
               <ul className="divide-y divide-ink/10">
                 {items.map((b) => {
-                  const isCancelled = b.status === "CANCELLED"
+                  // Neither counts in the takings
+                  const isCancelled = b.status === "CANCELLED" || b.status === NO_SHOW
                   return (
                     <li key={b.id} className="flex items-center gap-3 py-2">
                       <span className="w-[4.5rem] shrink-0 text-sm tabular-nums">

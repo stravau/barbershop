@@ -6,7 +6,7 @@ import { requireClient } from "@/lib/client-auth"
 import { clientHabit, suggestSlots } from "@/lib/express"
 import { formatPrice } from "@/lib/services"
 import { formatLisbon } from "@/lib/tz"
-import { isDone } from "@/app/admin/_lib"
+import { CARD_SIZE, stamps } from "@/lib/loyalty"
 import { Card, ContaShell, Notice } from "./_components/ContaShell"
 import { ExpressSlot } from "@/components/ExpressSlot"
 
@@ -33,10 +33,13 @@ export default async function ContaPage({ searchParams }: PageProps) {
 
   const [habit, bookings] = await Promise.all([
     clientHabit(client.id, client.preferredLocation),
-    prisma.booking.findMany({ where: { clientId: client.id }, select: { status: true, startUtc: true } }),
+    prisma.booking.findMany({
+      where: { clientId: client.id },
+      select: { status: true, startUtc: true, serviceId: true },
+    }),
   ])
   const suggestions = habit ? await suggestSlots(habit) : []
-  const visits = bookings.filter((b) => isDone(b, now)).length
+  const visits = stamps(bookings, now)
   const hasUpcoming = bookings.some(
     (b) => b.startUtc >= now && (b.status === "PENDING" || b.status === "CONFIRMED"),
   )
@@ -105,8 +108,9 @@ export default async function ContaPage({ searchParams }: PageProps) {
   )
 }
 
+/** `visits`: stamps on the card (cuts that happened, see lib/loyalty.ts). */
 function LoyaltyCard({ visits }: { visits: number }) {
-  const stamped = Math.min(visits, 6)
+  const stamped = Math.min(visits, CARD_SIZE)
   return (
     <Card className="mt-8">
       <div className="flex items-baseline justify-between gap-4">
@@ -142,9 +146,9 @@ function LoyaltyCard({ visits }: { visits: number }) {
           ? "Cartão completo! Já usaste o teu corte grátis."
           : visits === 5
             ? "O próximo corte é grátis."
-            : `Faltam ${5 - visits} ${5 - visits === 1 ? "visita" : "visitas"} para o corte grátis.`}
+            : `Faltam ${5 - visits} ${5 - visits === 1 ? "corte" : "cortes"} para o corte grátis.`}
       </p>
-      <p className="mt-1 text-xs text-muted">Conta as visitas marcadas pelo site. Válido apenas para o primeiro cartão.</p>
+      <p className="mt-1 text-xs text-muted">Cada corte feito vale um carimbo. Válido apenas para o primeiro cartão.</p>
     </Card>
   )
 }

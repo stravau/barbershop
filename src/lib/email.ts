@@ -401,6 +401,50 @@ export function clientCancelledEmail(booking: BookingForEmail): {
   return { subject, html }
 }
 
+/**
+ * Email sent when the barber moves a booking (day, time, city or service).
+ * `address` only for confirmed bookings, as everywhere else.
+ */
+export function clientRescheduledEmail(
+  booking: BookingForEmail,
+  opts: { previousWhen: string; confirmed: boolean },
+): {
+  subject: string
+  html: string
+} {
+  const site = getSiteUrl()
+  const statusUrl = `${site}/marcacao/${booking.id}?token=${booking.clientToken}`
+  const subject = `Tarzan's Barbershop: a tua marcação mudou para ${booking.whenLocal}`
+  const html = `<!DOCTYPE html>
+<html><body style="${baseStyle}">
+  <div style="max-width:600px;margin:0 auto;">
+    ${headerHtml}
+    <div style="${cardStyle}">
+      <p style="margin:0 0 12px 0;font-size:16px;">Olá, <strong>${escape(booking.clientName)}</strong>!</p>
+      <p style="margin:0 0 12px 0;font-size:16px;line-height:1.5;">A tua marcação foi alterada. Fica assim:</p>
+
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;">
+        ${detailRow("Quando", booking.whenLocal)}
+        ${detailRow("Antes", `<span style="text-decoration:line-through;color:${MUTED};font-weight:400;">${opts.previousWhen}</span>`)}
+        ${detailRow("Serviço", `${booking.serviceName} (${booking.durationMin} min)`)}
+        ${whereRow(booking)}
+        ${detailRow("Preço", `${priceFormat(booking.priceEur)} · pagas no fim`)}
+      </table>
+
+      <div style="text-align:center;">
+        ${button(statusUrl, "Ver marcação", "ghost")}
+        ${opts.confirmed ? button(calendarUrl(booking), "Google Calendar", "ghost") + button(icsUrl(booking), "iPhone / Outlook", "ghost") : ""}
+        ${whatsappButtonHtml() ? `<br>${whatsappButtonHtml()}` : ""}
+        <br>
+        ${button(cancelPageUrl(booking), "Não posso: cancelar", "danger")}
+      </div>
+    </div>
+    ${footerHtml}
+  </div>
+</body></html>`
+  return { subject, html }
+}
+
 /** "3 h", "menos de 1 h" — how long before the booking something happened. */
 function hoursBeforeText(hours: number): string {
   return hours < 1 ? "menos de 1 h" : `${Math.floor(hours)} h`
