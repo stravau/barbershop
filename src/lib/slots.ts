@@ -6,7 +6,7 @@ import {
   FRIDAY_TRAVEL_BLOCK,
 } from "./schedule"
 
-const DEFAULT_BUFFER_MIN = 10
+export const DEFAULT_BUFFER_MIN = 10
 const DEFAULT_STEP_MIN = 15
 
 export interface BusyInterval {

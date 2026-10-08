@@ -3,9 +3,8 @@
 
 import { prisma } from "./prisma"
 import { buildCombo, validateSelection } from "./services"
-import { getBusyIntervals } from "./gcal"
-import { filterFutureSlots, generateSlots, type BusyInterval } from "./slots"
-import { isLocationOpenOn, upcomingOpenDates, ymdDayOfWeek, type LocationId } from "./schedule"
+import { busyBetween, freeSlotsWith } from "./availability"
+import { upcomingOpenDates, ymdDayOfWeek, type LocationId } from "./schedule"
 import { combineDateTimeLisbon, formatLisbon, lisbonPeriods } from "./tz"
 
 const LOOKAHEAD_DAYS = 21
@@ -92,27 +91,16 @@ export async function clientHabit(
 /** Next free slots that fit the habit: one per day, best matches first, then by date. */
 export async function suggestSlots(habit: Habit): Promise<Suggestion[]> {
   const { today } = lisbonPeriods()
-  const days = upcomingOpenDates(habit.location, today, LOOKAHEAD_DAYS).filter((d) =>
-    isLocationOpenOn(habit.location, ymdDayOfWeek(d)),
-  )
+  const days = upcomingOpenDates(habit.location, today, LOOKAHEAD_DAYS)
   if (days.length === 0) return []
 
   const from = combineDateTimeLisbon(days[0], "00:00")
   const to = combineDateTimeLisbon(days[days.length - 1], "23:59")
-  const [bookings, gcalBusy] = await Promise.all([
-    prisma.booking.findMany({
-      where: { status: { in: ["PENDING", "CONFIRMED"] }, startUtc: { lt: to }, endUtc: { gt: from } },
-      select: { startUtc: true, endUtc: true },
-    }),
-    getBusyIntervals(from, to).catch(() => [] as BusyInterval[]),
-  ])
-  const busy = [...gcalBusy, ...bookings.map((b) => ({ start: b.startUtc, end: b.endUtc }))]
+  const busy = await busyBetween(from, to)
 
   const perDay: { startIso: string; score: number; date: string }[] = []
   for (const day of days) {
-    const slots = filterFutureSlots(
-      generateSlots({ isoDate: day, location: habit.location, durationMin: habit.durationMin, busy }),
-    )
+    const slots = freeSlotsWith(busy, habit.location, day, habit.durationMin)
     if (slots.length === 0) continue
     // Closest to the usual time; the usual weekday is worth ~3 hours of difference
     const best = slots

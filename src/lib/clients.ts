@@ -198,6 +198,12 @@ export async function mergeClients(
       where: { clientId: { in: others.map((o) => o.id) } },
       data: { clientId: primaryId },
     })
+    // Signed-in accounts of the merged clients stay signed in, as the primary
+    // (otherwise they'd be sent to registration and create a duplicate again)
+    await tx.clientSession.updateMany({
+      where: { clientId: { in: others.map((o) => o.id) } },
+      data: { clientId: primaryId },
+    })
     await tx.client.deleteMany({ where: { id: { in: others.map((o) => o.id) } } })
     await tx.client.update({
       where: { id: primaryId },

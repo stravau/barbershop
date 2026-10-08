@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { prisma } from "@/lib/prisma"
-import { getLisbonDayBounds } from "@/lib/tz"
-import { generateSlots, filterFutureSlots } from "@/lib/slots"
 import { buildCombo, parseServicesParam, validateSelection } from "@/lib/services"
-import type { LocationId } from "@/lib/schedule"
-import { getBusyIntervals } from "@/lib/gcal"
+import { freeSlots } from "@/lib/availability"
 
 const querySchema = z.object({
   location: z.enum(["lisboa", "setubal"]),
@@ -30,37 +26,7 @@ export async function GET(req: NextRequest) {
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
 
   const combo = buildCombo(itemIds)
-
-  const { startUtc: dayStart, endUtc: dayEnd } = getLisbonDayBounds(date)
-
-  const [gcalBusy, dbBookings] = await Promise.all([
-    getBusyIntervals(dayStart, dayEnd).catch((e) => {
-      console.error("[slots] gcal failed:", e)
-      return []
-    }),
-    prisma.booking.findMany({
-      where: {
-        status: { in: ["PENDING", "CONFIRMED"] },
-        startUtc: { lt: dayEnd },
-        endUtc: { gt: dayStart },
-      },
-      select: { startUtc: true, endUtc: true },
-    }),
-  ])
-
-  const allBusy = [
-    ...gcalBusy,
-    ...dbBookings.map((b) => ({ start: b.startUtc, end: b.endUtc })),
-  ]
-
-  const slots = filterFutureSlots(
-    generateSlots({
-      isoDate: date,
-      location: location as LocationId,
-      durationMin: combo.durationMin,
-      busy: allBusy,
-    }),
-  )
+  const slots = await freeSlots(location, date, combo.durationMin)
 
   return NextResponse.json({
     slots: slots.map((s) => s.toISOString()),

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { normalizePhone } from "@/lib/clients"
+import { normalizeName, normalizePhone } from "@/lib/clients"
 import { safeNext } from "@/lib/safe-next"
 import {
   currentClientSession,
@@ -10,6 +10,9 @@ import {
   sendClientCode,
   verifyClientCode,
 } from "@/lib/client-auth"
+
+/** "  José Silva" -> "jose" */
+const firstName = (name: string) => normalizeName(name).split(" ")[0]
 
 /** "&next=…" for the following step's URL (where to go once signed in). */
 const nextParam = (form: FormData) => {
@@ -53,8 +56,15 @@ export async function completeRegistration(form: FormData): Promise<void> {
   if (!/^\d{11,15}$/.test(phone)) redirect(`/conta/registo?erro=telefone${nextParam(form)}`)
 
   const existing = await prisma.client.findUnique({ where: { phone } })
-  // Don't take over someone else's record: only link if the email matches or is unset
-  if (existing && existing.email && normalizeEmail(existing.email) !== current.session.email) {
+  // Don't take over someone else's record (and see their visits): link only
+  // if the email matches, or — for a record without email, e.g. added by the
+  // barber — if the first name matches too. Knowing a number isn't enough.
+  const claimable =
+    !existing ||
+    (existing.email
+      ? normalizeEmail(existing.email) === current.session.email
+      : firstName(existing.name) === firstName(name))
+  if (!claimable) {
     redirect(`/conta/registo?erro=telefone-usado${nextParam(form)}`)
   }
   const client = existing

@@ -41,6 +41,11 @@ export const SCHEDULE: Record<LocationId, Partial<Record<DayOfWeek, WorkingHours
   },
 }
 
+/** How far ahead a booking can be made (days). */
+export const BOOKING_WINDOW_DAYS = 60
+/** The earliest a booking can start, in minutes from now (the barber confirms by hand). */
+export const MIN_NOTICE_MIN = 60
+
 /**
  * Defense-in-depth: even if SCHEDULE is edited, slot generator MUST honour these on Fridays.
  */

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { ArrowLeft, ChevronRight, Check, AlertCircle } from "lucide-react"
 import {
+  BOOKING_WINDOW_DAYS,
   DAY_SHORT,
   LOCATIONS,
   openDaysSummary,
@@ -49,8 +50,6 @@ interface SuccessPayload {
   location: LocationId
 }
 
-/** How far ahead a booking can be made. */
-const BOOKING_WINDOW_DAYS = 60
 /** Days shown before "Ver mais dias". */
 const DAYS_SHOWN = 14
 const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]

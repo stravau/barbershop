@@ -6,6 +6,8 @@ import { prisma } from "./prisma"
 import { buildCombo, validateSelection } from "./services"
 import { createEvent } from "./gcal"
 import { formatLisbon } from "./tz"
+import { freeSlots } from "./availability"
+import { DEFAULT_BUFFER_MIN } from "./slots"
 import { fixedPriceFor, normalizePhone } from "./clients"
 import { sendEmail, adminBookingEmail, clientReceivedEmail, ADMIN_EMAIL } from "./email"
 import type { LocationId } from "./schedule"
@@ -28,10 +30,14 @@ export type BookingRequestResult =
     }
   | { ok: false; status: number; error: string }
 
+/** Postgres advisory lock held while a booking is checked and written. */
+const BOOKING_LOCK = 7_202_604
+
 /**
- * Validates, re-checks the slot is free, upserts the client by phone,
- * creates a PENDING booking and notifies the barber and the client
- * (emails and Google Calendar are best effort).
+ * Validates, checks the time is one we'd offer (working hours, the gap
+ * between bookings, Google Calendar blocks, minimum notice, booking window),
+ * upserts the client by phone, creates a PENDING booking and notifies the
+ * barber and the client (emails and Google Calendar are best effort).
  */
 export async function createBookingRequest(input: BookingRequestInput): Promise<BookingRequestResult> {
   const { location, services, startUtc, notes } = input
@@ -46,44 +52,50 @@ export async function createBookingRequest(input: BookingRequestInput): Promise<
   const price = fixedPriceFor(client.name) ?? combo.priceEur
   const endUtc = addMinutes(startUtc, combo.durationMin)
 
-  if (startUtc.getTime() <= Date.now()) {
-    return { ok: false, status: 400, error: "Slot no passado" }
+  // Only a time the slot list would offer right now
+  const offered = await freeSlots(location, formatLisbon(startUtc, "yyyy-MM-dd"), combo.durationMin)
+  if (!offered.some((s) => s.getTime() === startUtc.getTime())) {
+    return { ok: false, status: 409, error: "Essa hora já não está disponível. Escolhe outra." }
   }
 
-  // Race-condition safety: re-check no overlapping booking exists
-  const overlapping = await prisma.booking.findFirst({
-    where: {
-      status: { in: ["PENDING", "CONFIRMED"] },
-      startUtc: { lt: endUtc },
-      endUtc: { gt: startUtc },
-    },
-    select: { id: true },
+  // Two requests for the same time at once: the lock makes the second one
+  // wait, and then it sees the first booking
+  const booking = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${BOOKING_LOCK})`
+    const overlapping = await tx.booking.findFirst({
+      where: {
+        status: { in: ["PENDING", "CONFIRMED"] },
+        startUtc: { lt: addMinutes(endUtc, DEFAULT_BUFFER_MIN) },
+        endUtc: { gt: addMinutes(startUtc, -DEFAULT_BUFFER_MIN) },
+      },
+      select: { id: true },
+    })
+    if (overlapping) return null
+
+    const dbClient = await tx.client.upsert({
+      where: { phone: client.phone },
+      update: { name: client.name, email: client.email },
+      create: { phone: client.phone, name: client.name, email: client.email },
+    })
+    return tx.booking.create({
+      data: {
+        clientId: dbClient.id,
+        email: client.email,
+        serviceId: combo.key,
+        serviceName: combo.name,
+        servicePrice: price,
+        durationMin: combo.durationMin,
+        location,
+        startUtc,
+        endUtc,
+        status: "PENDING",
+        notes,
+      },
+    })
   })
-  if (overlapping) {
+  if (!booking) {
     return { ok: false, status: 409, error: "Esse horário foi marcado entretanto. Escolhe outro." }
   }
-
-  const dbClient = await prisma.client.upsert({
-    where: { phone: client.phone },
-    update: { name: client.name, email: client.email },
-    create: { phone: client.phone, name: client.name, email: client.email },
-  })
-
-  const booking = await prisma.booking.create({
-    data: {
-      clientId: dbClient.id,
-      email: client.email,
-      serviceId: combo.key,
-      serviceName: combo.name,
-      servicePrice: price,
-      durationMin: combo.durationMin,
-      location,
-      startUtc,
-      endUtc,
-      status: "PENDING",
-      notes,
-    },
-  })
 
   const whenLocal = formatLisbon(startUtc, "EEEE, dd 'de' MMMM 'às' HH:mm")
   const locationPretty = location === "lisboa" ? "Lisboa" : "Setúbal"
