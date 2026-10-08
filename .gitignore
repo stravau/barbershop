@@ -54,3 +54,7 @@ prisma/*.db-journal
 
 # screenshots from scripts/screenshot.mjs
 /.screenshots
+
+# Playwright test output
+/test-results
+/playwright-report

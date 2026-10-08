@@ -11,7 +11,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "seed:dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/dev-seed.mjs",
-    "shot": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/screenshot.mjs"
+    "shot": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/screenshot.mjs",
+    "test": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
