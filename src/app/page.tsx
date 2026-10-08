@@ -8,24 +8,32 @@ import { PriceBoard } from "@/components/PriceBoard"
 import { LOCATIONS, groupedWeeklyHours } from "@/lib/schedule"
 import { getServiceItem, formatPriceShort } from "@/lib/services"
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
+import { barbershopJsonLd } from "@/lib/structured-data"
 
 const TAGLINE = "Corte, barba e sobrancelha."
 
 export default function HomePage() {
   return (
     <AccountSummaryProvider>
-      {/* From md up the first screen is all cream: the bar and the hero fill the
-          height under the header (70px) and the hero's content sits centred,
-          so the next section only starts below the fold */}
-      <div className="md:flex md:min-h-[calc(100svh-70px)] md:flex-col">
-        <NextBookingBar />
-        <Hero />
-      </div>
-      <InstagramBand />
-      <PricesAndHowItWorks />
-      <Timetable />
-      <LoyaltyCard />
-      <Rules />
+      <main>
+        {/* Hours, prices and links for search engines */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(barbershopJsonLd()).replace(/</g, "\\u003c") }}
+        />
+        {/* From md up the first screen is all cream: the bar and the hero fill the
+            height under the header (70px) and the hero's content sits centred,
+            so the next section only starts below the fold */}
+        <div className="md:flex md:min-h-[calc(100svh-70px)] md:flex-col">
+          <NextBookingBar />
+          <Hero />
+        </div>
+        <InstagramBand />
+        <PricesAndHowItWorks />
+        <Timetable />
+        <LoyaltyCard />
+        <Rules />
+      </main>
     </AccountSummaryProvider>
   )
 }

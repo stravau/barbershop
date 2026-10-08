@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { BackLink } from "@/components/BackLink"
@@ -21,6 +22,9 @@ import {
 } from "./actions"
 import { CityTag, StatusPill } from "../../_components/ui"
 import { NO_SHOW, isDone, received } from "../../_lib"
+
+// Reachable with the email link's token: never indexed
+export const metadata: Metadata = { title: "Marcação", robots: "noindex" }
 
 interface PageProps {
   params: Promise<{ id: string }>
