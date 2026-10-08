@@ -4,6 +4,8 @@ import { ArrowRight } from "lucide-react"
 import { InstagramIcon } from "@/components/InstagramIcon"
 import { NextBookingBar, AccountSummaryProvider, HeroCta } from "@/components/home/AccountSummary"
 import { StampCard } from "@/components/home/StampCard"
+import { ReelsPhone, ReelsRow } from "@/components/home/ReelsShowcase"
+import { REELS } from "@/lib/reels"
 import { PriceBoard } from "@/components/PriceBoard"
 import { LOCATIONS, groupedWeeklyHours } from "@/lib/schedule"
 import { getServiceItem, formatPriceShort } from "@/lib/services"
@@ -28,7 +30,7 @@ export default function HomePage() {
           <NextBookingBar />
           <Hero />
         </div>
-        <InstagramBand />
+        <InstagramReels />
         <PricesAndHowItWorks />
         <Timetable />
         <LoyaltyCard />
@@ -83,7 +85,18 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative mx-auto w-full max-w-[340px] sm:max-w-[420px]">
+        {/* From md up: a phone playing the Instagram videos */}
+        <div className="relative mx-auto hidden w-fit md:block">
+          <ReelsPhone
+            reels={REELS}
+            // As tall as the first screen allows (the hero fits it from md up)
+            className="w-[min(300px,calc((100svh-210px)*0.5))] min-w-[230px] md:group-has-[[data-express]]/hero:w-[min(280px,calc((100svh-330px)*0.5))]"
+          />
+          {cut && <CutPrice price={cut.priceEur} className="-top-10 -right-20" />}
+        </div>
+
+        {/* Phones: the logo (the videos are in the Instagram band below) */}
+        <div className="relative mx-auto w-full max-w-[340px] sm:max-w-[420px] md:hidden">
           <div className="-rotate-2 rounded-lg border-2 border-ink bg-black p-2 shadow-[8px_8px_0_var(--jungle)]">
             {/* The logo file has wide black margins — crop into the illustration */}
             <div className="relative aspect-[1.18] overflow-hidden rounded-md border border-yellow/50">
@@ -98,19 +111,24 @@ function Hero() {
               />
             </div>
           </div>
-          {cut && (
-            <div className="absolute -top-5 -right-2 grid h-28 w-28 rotate-[10deg] place-items-center rounded-full border-2 border-ink bg-yellow text-center shadow-[3px_3px_0_var(--ink)] sm:-right-7">
-              <div>
-                <div className="caps text-xs">Corte</div>
-                <div className="font-display text-[1.9rem] leading-none">
-                  {formatPriceShort(cut.priceEur)}
-                </div>
-              </div>
-            </div>
-          )}
+          {cut && <CutPrice price={cut.priceEur} className="-top-5 -right-2 sm:-right-7" />}
         </div>
       </div>
     </section>
+  )
+}
+
+/** The round "Corte 10 €" sticker on the hero picture. */
+function CutPrice({ price, className }: { price: number; className: string }) {
+  return (
+    <div
+      className={`absolute z-10 grid h-28 w-28 rotate-[10deg] place-items-center rounded-full border-2 border-ink bg-yellow text-center shadow-[3px_3px_0_var(--ink)] ${className}`}
+    >
+      <div>
+        <div className="caps text-xs">Corte</div>
+        <div className="font-display text-[1.9rem] leading-none">{formatPriceShort(price)}</div>
+      </div>
+    </div>
   )
 }
 
@@ -162,19 +180,23 @@ function HowStep({
   )
 }
 
-// The site has no photos, so this is where people go to see the work.
-function InstagramBand() {
+// The Instagram band. Phones: the row of videos to swipe (on desktop they
+// play in the phone in the hero, so here it's just the link).
+function InstagramReels() {
   return (
-    <section className="border-y-2 border-ink bg-yellow">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 px-4 py-8 text-center sm:px-6 md:flex-row md:justify-between md:py-7 md:text-left">
-        <div className="flex flex-col items-center gap-4 md:flex-row">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border-2 border-ink bg-paper shadow-[3px_3px_0_var(--ink)]">
+    <section aria-labelledby="cortes" className="overflow-hidden border-y-2 border-ink bg-yellow">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 md:flex md:items-center md:justify-between md:gap-6 md:py-7">
+        <div className="md:flex md:items-center md:gap-4">
+          <span className="hidden h-12 w-12 shrink-0 place-items-center rounded-xl border-2 border-ink bg-paper shadow-[3px_3px_0_var(--ink)] md:grid">
             <InstagramIcon className="h-7 w-7" />
           </span>
           <div>
-            <h2 className="text-2xl sm:text-3xl">Segue-nos no Instagram!</h2>
+            <h2 id="cortes" className="text-3xl">
+              <span className="md:hidden">Vê o antes e o depois</span>
+              <span className="hidden md:inline">Segue-nos no Instagram!</span>
+            </h2>
             <p className="mt-1">
-              Vê os últimos cortes e novidades em{" "}
+              Os últimos cortes e novidades em{" "}
               <a href={INSTAGRAM_URL} target="_blank" rel="noopener" className="font-bold underline underline-offset-4">
                 @{INSTAGRAM_HANDLE}
               </a>
@@ -182,12 +204,10 @@ function InstagramBand() {
             </p>
           </div>
         </div>
-        <a
-          href={INSTAGRAM_URL}
-          target="_blank"
-          rel="noopener"
-          className="btn shrink-0 bg-ink text-yellow"
-        >
+        <div className="mt-6 md:hidden">
+          <ReelsRow reels={REELS} />
+        </div>
+        <a href={INSTAGRAM_URL} target="_blank" rel="noopener" className="btn mt-2 shrink-0 bg-ink text-yellow md:mt-0">
           <InstagramIcon className="h-5 w-5" /> Visitar o Instagram
         </a>
       </div>
