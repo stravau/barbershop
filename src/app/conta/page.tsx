@@ -6,7 +6,7 @@ import { requireClient } from "@/lib/client-auth"
 import { clientHabit, suggestSlots } from "@/lib/express"
 import { formatPrice } from "@/lib/services"
 import { formatLisbon } from "@/lib/tz"
-import { CARD_SIZE, stamps } from "@/lib/loyalty"
+import { STAMPS_TO_FREE, cardMessage, stamps } from "@/lib/loyalty"
 import { Card, ContaShell, Notice } from "./_components/ContaShell"
 import { ExpressSlot } from "@/components/ExpressSlot"
 
@@ -110,44 +110,45 @@ export default async function ContaPage({ searchParams }: PageProps) {
 
 /** `visits`: stamps on the card (cuts that happened, see lib/loyalty.ts). */
 function LoyaltyCard({ visits }: { visits: number }) {
-  const stamped = Math.min(visits, CARD_SIZE)
+  const stamped = Math.min(visits, STAMPS_TO_FREE)
+  const freeUsed = visits > STAMPS_TO_FREE
   return (
     <Card className="mt-8">
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-2xl sm:text-3xl">Cartão de cliente</h2>
-        <span className="caps text-sm tabular-nums">{stamped}/6</span>
+        <span className="caps text-sm tabular-nums">
+          {stamped}/{STAMPS_TO_FREE}
+        </span>
       </div>
-      <ol className="mt-5 grid max-w-sm grid-cols-6 gap-2" aria-label={`${stamped} de 6 carimbos`}>
-        {Array.from({ length: 6 }, (_, i) => {
-          const isFree = i === 5
-          const isStamped = i < stamped
+      {/* Six stamps, then the free 7th cut */}
+      <ol
+        className="mt-5 grid max-w-sm grid-cols-7 gap-2"
+        aria-label={`${stamped} de ${STAMPS_TO_FREE} carimbos; o sétimo corte é grátis`}
+      >
+        {Array.from({ length: STAMPS_TO_FREE + 1 }, (_, i) => {
+          const isFree = i === STAMPS_TO_FREE
+          const isStamped = isFree ? freeUsed : i < stamped
           return (
             <li
               key={i}
               className={
-                isStamped
-                  ? "grid aspect-square place-items-center rounded-full border-2 border-jungle bg-jungle/90 text-paper"
-                  : isFree
-                    ? "grid aspect-square place-items-center rounded-full border-2 border-ink bg-yellow"
+                isFree
+                  ? "grid aspect-square place-items-center rounded-full border-2 border-ink bg-yellow"
+                  : isStamped
+                    ? "grid aspect-square place-items-center rounded-full border-2 border-jungle bg-jungle/90 text-paper"
                     : "grid aspect-square place-items-center rounded-full border-2 border-dashed border-ink/30"
               }
             >
               {isStamped ? (
                 <span className="text-lg leading-none">★</span>
               ) : isFree ? (
-                <span className="caps text-[0.55rem] leading-none">Grátis</span>
+                <span className="caps text-[0.5rem] leading-none">Grátis</span>
               ) : null}
             </li>
           )
         })}
       </ol>
-      <p className="mt-4 text-sm text-ink/80">
-        {visits >= 6
-          ? "Cartão completo! Já usaste o teu corte grátis."
-          : visits === 5
-            ? "O próximo corte é grátis."
-            : `Faltam ${5 - visits} ${5 - visits === 1 ? "corte" : "cortes"} para o corte grátis.`}
-      </p>
+      <p className="mt-4 text-sm text-ink/80">{cardMessage(visits)}</p>
       <p className="mt-1 text-xs text-muted">Cada corte feito vale um carimbo. Válido apenas para o primeiro cartão.</p>
     </Card>
   )

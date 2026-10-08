@@ -1,5 +1,6 @@
 "use client"
 
+import { STAMPS_TO_FREE } from "@/lib/loyalty"
 import { createContext, useContext, useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowRight, CalendarCheck, Zap } from "lucide-react"
@@ -170,5 +171,5 @@ function ExpressBox({ express }: { express: Express }) {
 /** Stamps on the home page's loyalty card: the client's own, or the example. */
 export function useStamps(example: number): { stamped: number; own: boolean } {
   const s = useSignedIn()
-  return s ? { stamped: Math.min(s.visits, 6), own: true } : { stamped: example, own: false }
+  return s ? { stamped: Math.min(s.visits, STAMPS_TO_FREE + 1), own: true } : { stamped: example, own: false }
 }

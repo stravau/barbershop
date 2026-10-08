@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { CARD_SIZE, isCut, stamps } from "@/lib/loyalty"
+import { STAMPS_TO_FREE, cardMessage, isCut, stamps } from "@/lib/loyalty"
 import { adminCancelledByClientEmail, clientRescheduledEmail, type BookingForEmail } from "@/lib/email"
 
 test("the loyalty card counts the cuts that happened — not no-shows, other services or future ones", () => {
@@ -22,7 +22,14 @@ test("the loyalty card counts the cuts that happened — not no-shows, other ser
     ),
   ).toBe(2)
   expect(isCut("corte+sobrancelha")).toBe(true)
-  expect(CARD_SIZE).toBe(6)
+})
+
+test("six stamps, then the 7th cut is free", () => {
+  expect(STAMPS_TO_FREE).toBe(6)
+  expect(cardMessage(0)).toBe("Faltam 6 cortes para o corte grátis.")
+  expect(cardMessage(5)).toBe("Falta 1 corte para o corte grátis.")
+  expect(cardMessage(6)).toBe("O próximo corte é grátis.")
+  expect(cardMessage(7)).toBe("Cartão completo! Já usaste o teu corte grátis.")
 })
 
 const booking: BookingForEmail = {

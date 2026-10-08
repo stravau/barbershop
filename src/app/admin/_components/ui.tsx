@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { formatPrice, formatPriceShort } from "@/lib/services"
-import { CARD_SIZE } from "@/lib/loyalty"
+import { STAMPS_TO_FREE } from "@/lib/loyalty"
 import { cn } from "@/lib/utils"
 
 const STATUS: Record<string, { label: string; className: string }> = {
@@ -140,9 +140,14 @@ export function Empty({ children }: { children: React.ReactNode }) {
 /** Stamps on the loyalty card (see lib/loyalty.ts). */
 export function LoyaltyBadge({ stamped }: { stamped: number }) {
   if (stamped === 0) return null
-  const nextFree = stamped === CARD_SIZE - 1
+  // Six stamps, then the 7th cut is free
+  const nextFree = stamped === STAMPS_TO_FREE
   const label =
-    stamped >= CARD_SIZE ? "cartão completo" : nextFree ? `${stamped}/${CARD_SIZE} · próximo grátis` : `${stamped}/${CARD_SIZE}`
+    stamped > STAMPS_TO_FREE
+      ? "cartão completo"
+      : nextFree
+        ? `${stamped}/${STAMPS_TO_FREE} · próximo grátis`
+        : `${stamped}/${STAMPS_TO_FREE}`
   return (
     <span
       className={cn(

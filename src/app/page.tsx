@@ -241,14 +241,14 @@ function LoyaltyCard() {
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
         {/* Spans the full width and scales with the viewport so it always
             fits on one line */}
-        <h2 className="whitespace-nowrap text-[clamp(1.4rem,7.6vw,3rem)]">
-          O sexto corte é grátis
+        <h2 className="whitespace-nowrap text-[clamp(1.25rem,7.2vw,3rem)]">
+          O sétimo corte é grátis
         </h2>
         <div className="mt-6 grid items-start gap-12 md:grid-cols-2">
           <div>
             <p className="max-w-md text-lg leading-relaxed text-ink/80">
               Recebes o cartão de cliente na primeira visita e cada corte vale
-              um carimbo. Junta cinco e o sexto fica de oferta.
+              um carimbo. Junta seis e o sétimo fica de oferta.
             </p>
             <p className="mt-3 text-sm text-muted">Válido apenas para o primeiro cartão.</p>
           </div>

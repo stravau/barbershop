@@ -208,7 +208,8 @@ export default async function ClientesPage({ searchParams }: PageProps) {
       )}
       <p className="mt-4 text-xs text-muted">
         O cartão conta os cortes feitos (as faltas não contam) e é válido apenas
-        para o primeiro: o sexto corte é grátis. Regista-o com preço 0.
+        para o primeiro: depois de seis carimbos, o sétimo corte é grátis.
+        Regista-o com preço 0.
       </p>
     </main>
   )
