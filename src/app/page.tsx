@@ -47,8 +47,25 @@ function Hero() {
     // With the express box (signed-in client) the hero is taller; from md up it
     // then scales with the screen height so all of it fits on the first screen
     // (sizes only shrink as much as needed — tall screens keep them).
-    <section className="group/hero overflow-hidden md:flex md:flex-1 md:items-center">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:py-16 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
+    <section className="group/hero relative overflow-hidden md:flex md:flex-1 md:items-center">
+      {/* The logo, big and faint behind everything (behind the first screen
+          on phones, where the logo card comes further down). The cut-out
+          PNG, not logo.jpeg: its black square darkened the page */}
+      <div
+        aria-hidden="true"
+        data-hero-logo
+        className="pointer-events-none absolute inset-0 flex items-start justify-center pt-6 md:items-center md:pt-0"
+      >
+        <Image
+          src="/logo-mark.png"
+          alt=""
+          width={600}
+          height={471}
+          sizes="(min-width: 768px) 1100px, 160vw"
+          className="w-[150vw] max-w-none opacity-[0.08] select-none md:h-[92%] md:w-auto"
+        />
+      </div>
+      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:py-16 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
         {/* (On phones under ~400px the name and tagline shrink to fit the width.)
             Everything is centred under the name. From md up the grid column
             is exactly as wide as "TARZAN'S" (its min-content). */}
