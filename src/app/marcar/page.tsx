@@ -1,7 +1,7 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, ChevronRight, Check, AlertCircle } from "lucide-react"
 import {
   BOOKING_WINDOW_DAYS,
@@ -28,17 +28,16 @@ import { whatsappUrl } from "@/lib/site"
 import { BackLink } from "@/components/BackLink"
 import { cn } from "@/lib/utils"
 
-type Step = "services" | "when" | "details" | "confirm" | "success"
+// The flow lives in the URL (?services=…&cidade=…&dia=…&hora=…&passo=…):
+// the phone's back button goes back a step, and signing in on the last step
+// comes back to it with everything still chosen.
+type Step = "servico" | "quando" | "confirmar"
 
-interface BookingState {
-  services?: ServiceId[]
+interface Choice {
+  services: ServiceId[]
   location?: LocationId
   date?: string
   slotIso?: string
-  name?: string
-  phone?: string
-  email?: string
-  notes?: string
 }
 
 interface SuccessPayload {
@@ -53,21 +52,47 @@ interface SuccessPayload {
 /** Days shown before "Ver mais dias". */
 const DAYS_SHOWN = 14
 const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+/** Notes survive going back a step and the trip to the sign-in page. */
+const NOTES_KEY = "marcar-notas"
 
 const todayLisbon = () => formatLisbon(new Date(), "yyyy-MM-dd")
 const noonUtc = (ymd: string) => new Date(`${ymd}T12:00:00Z`)
 
-const STEPS: Step[] = ["services", "when", "details", "confirm"]
+const STEPS: Step[] = ["servico", "quando", "confirmar"]
 
 const STEP_LABEL: Record<Step, string> = {
-  services: "Serviço",
-  when: "Cidade, dia e hora",
-  details: "Os teus dados",
-  confirm: "Confirmar",
-  success: "",
+  servico: "Serviço",
+  quando: "Cidade, dia e hora",
+  confirmar: "Confirmar",
 }
 
 const cityName = (id: LocationId) => (id === "lisboa" ? "Lisboa" : "Setúbal")
+const otherCity = (id: LocationId): LocationId => (id === "lisboa" ? "setubal" : "lisboa")
+
+function readNotes(): string {
+  try {
+    return sessionStorage.getItem(NOTES_KEY) ?? ""
+  } catch {
+    return ""
+  }
+}
+
+function writeNotes(notes: string): void {
+  try {
+    if (notes) sessionStorage.setItem(NOTES_KEY, notes)
+    else sessionStorage.removeItem(NOTES_KEY)
+  } catch {}
+}
+
+function choiceUrl(choice: Choice, step: Step): string {
+  const q = new URLSearchParams()
+  if (choice.services.length > 0) q.set("services", choice.services.join(","))
+  if (choice.location) q.set("cidade", choice.location)
+  if (choice.date) q.set("dia", choice.date)
+  if (choice.slotIso) q.set("hora", choice.slotIso)
+  q.set("passo", step)
+  return `/marcar?${q}`
+}
 
 export default function MarcarPage() {
   return (
@@ -87,90 +112,89 @@ function MarcarFallback() {
 
 function MarcarFlow() {
   const params = useSearchParams()
-  const initialServices = parseServicesParam(params.get("services")) as ServiceId[]
-  const validInitial = validateSelection(initialServices)
-
-  // Skip "services" step if URL pre-fills a valid selection
-  const [step, setStep] = useState<Step>(
-    validInitial.ok && initialServices.length > 0 ? "when" : "services",
-  )
-  const [state, setState] = useState<BookingState>(
-    validInitial.ok ? { services: initialServices } : {},
-  )
+  const router = useRouter()
   const [success, setSuccess] = useState<SuccessPayload | null>(null)
 
-  function reset() {
-    setStep("services")
-    setState({})
-    setSuccess(null)
-  }
+  // Everything chosen so far comes from the URL
+  const services = parseServicesParam(params.get("services")) as ServiceId[]
+  const servicesOk = services.length > 0 && validateSelection(services).ok
+  const cidade = params.get("cidade")
+  const location = cidade === "lisboa" || cidade === "setubal" ? cidade : undefined
+  const dia = params.get("dia") ?? ""
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : undefined
+  const hora = params.get("hora") ?? ""
+  const slotIso = !Number.isNaN(Date.parse(hora)) ? hora : undefined
+  const choice: Choice = { services: servicesOk ? services : [], location, date, slotIso }
+
+  const passo = params.get("passo")
+  const step: Step =
+    !servicesOk || passo === "servico"
+      ? "servico"
+      : passo === "confirmar" && location && slotIso
+        ? "confirmar"
+        : "quando"
+
+  // A new step: start at its title (screen readers too)
+  const firstRender = useRef(true)
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    document.getElementById("marcar-passo")?.focus({ preventScroll: true })
+  }, [step, success])
+
+  /** A new step = a new history entry, so "back" returns to the previous one. */
+  const goTo = (next: Choice, nextStep: Step) => router.push(choiceUrl(next, nextStep))
+  /** Choices inside a step (city, day) only update the URL. */
+  const update = (next: Choice) => router.replace(choiceUrl(next, step), { scroll: false })
 
   return (
     <main>
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="mb-8">
           {/* Later steps have their own "Voltar" (to the previous step) */}
-          {step === "services" && <BackLink href="/" />}
+          {step === "servico" && !success && <BackLink href="/" />}
           <h1 className="print-shadow text-5xl sm:text-6xl">Marcar</h1>
-          {step !== "success" && <StepProgress step={step} />}
+          {!success && <StepProgress step={step} />}
         </div>
 
         <div className="rounded-lg border-2 border-ink bg-card p-5 shadow-[6px_6px_0_var(--ink)] sm:p-8">
-          {step === "services" && (
+          {success ? (
+            <SuccessStep
+              payload={success}
+              onReset={() => {
+                setSuccess(null)
+                router.push("/marcar")
+              }}
+            />
+          ) : step === "servico" ? (
             <ServicesStep
-              initial={state.services ?? []}
-              onPick={(services) => {
-                setState((s) => ({ ...s, services }))
-                setStep("when")
-              }}
+              initial={choice.services}
+              onPick={(picked) => goTo({ ...choice, services: picked, slotIso: undefined }, "quando")}
             />
-          )}
-
-          {step === "when" && state.services && (
+          ) : step === "quando" ? (
             <WhenStep
-              services={state.services}
-              initialLocation={state.location}
-              initialDate={state.date}
-              onBack={() => setStep("services")}
-              onPick={({ location, date, slotIso }) => {
-                setState((s) => ({ ...s, location, date, slotIso }))
-                setStep("details")
+              services={choice.services}
+              location={location}
+              date={date}
+              onBack={() => goTo(choice, "servico")}
+              onLocation={(id) => update({ ...choice, location: id, date: undefined, slotIso: undefined })}
+              onDate={(d) => update({ ...choice, date: d, slotIso: undefined })}
+              onPick={(picked) => goTo({ ...choice, slotIso: picked }, "confirmar")}
+            />
+          ) : (
+            <ConfirmStep
+              choice={choice as Required<Choice>}
+              onBack={() => goTo({ ...choice, slotIso: undefined }, "quando")}
+              onPickAnother={() => goTo({ ...choice, slotIso: undefined }, "quando")}
+              onSuccess={(payload) => {
+                writeNotes("")
+                setSuccess(payload)
+                // Back from here goes to the choices, not to this (sent) step
+                router.replace("/marcar?passo=enviado", { scroll: true })
               }}
             />
-          )}
-
-          {step === "details" && (
-            <DetailsStep
-              initial={{
-                name: state.name ?? "",
-                phone: state.phone ?? "",
-                email: state.email ?? "",
-                notes: state.notes ?? "",
-              }}
-              onBack={() => setStep("when")}
-              onSubmit={(data) => {
-                setState((s) => ({ ...s, ...data }))
-                setStep("confirm")
-              }}
-            />
-          )}
-
-          {step === "confirm" &&
-            state.location &&
-            state.services &&
-            state.slotIso && (
-              <ConfirmStep
-                state={state as Required<BookingState>}
-                onBack={() => setStep("details")}
-                onSuccess={(payload) => {
-                  setSuccess(payload)
-                  setStep("success")
-                }}
-              />
-            )}
-
-          {step === "success" && success && (
-            <SuccessStep payload={success} onReset={reset} />
           )}
         </div>
       </div>
@@ -178,12 +202,8 @@ function MarcarFlow() {
   )
 }
 
-function stepNumber(step: Step): number {
-  return Math.min(STEPS.indexOf(step) + 1, STEPS.length)
-}
-
 function StepProgress({ step }: { step: Step }) {
-  const n = stepNumber(step)
+  const n = STEPS.indexOf(step) + 1
   return (
     <div className="mt-5">
       <div className="flex gap-1.5" aria-hidden="true">
@@ -325,21 +345,24 @@ function ServicesStep({
 // ---------- STEP 2: city, day and time ----------
 function WhenStep({
   services,
-  initialLocation,
-  initialDate,
+  location,
+  date,
   onBack,
+  onLocation,
+  onDate,
   onPick,
 }: {
   services: ServiceId[]
-  initialLocation?: LocationId
-  initialDate?: string
+  location?: LocationId
+  date?: string
   onBack: () => void
-  onPick: (p: { location: LocationId; date: string; slotIso: string }) => void
+  onLocation: (id: LocationId) => void
+  onDate: (ymd: string) => void
+  onPick: (slotIso: string) => void
 }) {
   const combo = buildCombo(services)
-  const [location, setLocation] = useState<LocationId | undefined>(initialLocation)
-  const [date, setDate] = useState<string | undefined>(initialDate)
   const [showAllDays, setShowAllDays] = useState(false)
+  const counts = useDayCounts(location, services)
 
   const today = todayLisbon()
   // Only the days the barber is actually in the chosen city
@@ -347,17 +370,15 @@ function WhenStep({
     () => (location ? upcomingOpenDates(location, today, BOOKING_WINDOW_DAYS) : []),
     [location, today],
   )
-  const activeDate = date && days.includes(date) ? date : days[0]
+  const loaded = counts !== undefined
+  const hasRoom = (d: string) => !counts || (counts[d] ?? 0) > 0
+  // The day asked for, else (once we know) the first day with free times
+  const activeDate = date && days.includes(date) ? date : loaded ? days.find(hasRoom) : undefined
   const activeIdx = activeDate ? days.indexOf(activeDate) : -1
   const visibleDays =
     showAllDays || activeIdx >= DAYS_SHOWN ? days : days.slice(0, DAYS_SHOWN)
-  const nextDay = activeIdx >= 0 ? days[activeIdx + 1] : undefined
-
-  function pickLocation(id: LocationId) {
-    setLocation(id)
-    setDate(undefined)
-    setShowAllDays(false)
-  }
+  const nextDay = activeIdx >= 0 ? days.slice(activeIdx + 1).find(hasRoom) : undefined
+  const allFull = !!counts && days.length > 0 && !days.some(hasRoom)
 
   return (
     <div>
@@ -375,7 +396,10 @@ function WhenStep({
             <button
               key={loc.id}
               type="button"
-              onClick={() => pickLocation(loc.id)}
+              onClick={() => {
+                setShowAllDays(false)
+                onLocation(loc.id)
+              }}
               aria-pressed={selected}
               className={cn(
                 "rounded-md border-2 p-4 text-left transition",
@@ -403,7 +427,8 @@ function WhenStep({
                 ymd={d}
                 today={today}
                 selected={d === activeDate}
-                onClick={() => setDate(d)}
+                full={!hasRoom(d)}
+                onClick={() => onDate(d)}
               />
             ))}
           </div>
@@ -419,6 +444,21 @@ function WhenStep({
         </>
       )}
 
+      {location && allFull && (
+        <div className="mt-7 rounded-md border-2 border-ink/20 bg-paper p-4">
+          <p className="font-semibold">
+            Não há horas livres em {cityName(location)} nos próximos {BOOKING_WINDOW_DAYS} dias.
+          </p>
+          <button type="button" onClick={() => onLocation(otherCity(location))} className="btn btn-sm mt-3">
+            Ver {cityName(otherCity(location))}
+          </button>
+        </div>
+      )}
+
+      {location && !activeDate && !allFull && (
+        <p className="mt-7 text-muted" role="status">A ver a agenda…</p>
+      )}
+
       {location && activeDate && (
         <>
           <FieldLabel className="mt-7">
@@ -429,12 +469,12 @@ function WhenStep({
             location={location}
             date={activeDate}
             services={services}
-            onPick={(slotIso) => onPick({ location, date: activeDate, slotIso })}
-            onNextDay={nextDay ? () => setDate(nextDay) : undefined}
+            onPick={onPick}
+            onNextDay={nextDay ? () => onDate(nextDay) : undefined}
             nextDayLabel={
               nextDay ? formatLisbon(noonUtc(nextDay), "EEEE, dd 'de' MMMM") : undefined
             }
-            onOtherCity={() => pickLocation(location === "lisboa" ? "setubal" : "lisboa")}
+            onOtherCity={() => onLocation(otherCity(location))}
           />
         </>
       )}
@@ -442,15 +482,47 @@ function WhenStep({
   )
 }
 
+/**
+ * Free times per day for the chosen city and services: undefined while
+ * loading, null if they couldn't be loaded (then every day stays pickable
+ * and each day's list still loads on its own).
+ */
+function useDayCounts(location: LocationId | undefined, services: ServiceId[]) {
+  const key = location ? `${location}|${services.join(",")}` : ""
+  const [state, setState] = useState<{ key: string; counts: Record<string, number> | null } | null>(null)
+
+  useEffect(() => {
+    if (!location) return
+    let cancelled = false
+    fetch(`/api/slots/dias?location=${location}&services=${services.join(",")}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d: { days: Record<string, number> }) => {
+        if (!cancelled) setState({ key, counts: d.days })
+      })
+      .catch(() => {
+        if (!cancelled) setState({ key, counts: null })
+      })
+    return () => {
+      cancelled = true
+    }
+    // `key` stands for location + services
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return state && state.key === key ? state.counts : undefined
+}
+
 function DayChip({
   ymd,
   today,
   selected,
+  full,
   onClick,
 }: {
   ymd: string
   today: string
   selected: boolean
+  full: boolean
   onClick: () => void
 }) {
   const d = noonUtc(ymd)
@@ -464,17 +536,23 @@ function DayChip({
     <button
       type="button"
       onClick={onClick}
+      disabled={full}
       aria-pressed={selected}
+      aria-label={`${formatLisbon(d, "EEEE, d 'de' MMMM")}${full ? ", sem horas livres" : ""}`}
       className={cn(
         "rounded-md border-2 px-1 py-2 text-center transition",
-        selected
-          ? "border-ink bg-yellow shadow-[3px_3px_0_var(--ink)]"
-          : "border-ink/20 bg-paper hover:border-ink",
+        full
+          ? "cursor-not-allowed border-ink/10 bg-paper-dark/40 text-muted"
+          : selected
+            ? "border-ink bg-yellow shadow-[3px_3px_0_var(--ink)]"
+            : "border-ink/20 bg-paper hover:border-ink",
       )}
     >
       <span className="caps block text-xs">{label}</span>
-      <span className="font-display block text-2xl leading-tight">{d.getUTCDate()}</span>
-      <span className="block text-xs text-muted">{MONTH_SHORT[d.getUTCMonth()]}</span>
+      <span className={cn("font-display block text-2xl leading-tight", full && "line-through opacity-60")}>
+        {d.getUTCDate()}
+      </span>
+      <span className="block text-xs text-muted">{full ? "cheio" : MONTH_SHORT[d.getUTCMonth()]}</span>
     </button>
   )
 }
@@ -498,37 +576,46 @@ function DaySlots({
   onOtherCity: () => void
 }) {
   const [slots, setSlots] = useState<string[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     const url = `/api/slots?location=${location}&date=${date}&services=${services.join(",")}`
-    fetch(url)
-      .then(async (r) => {
-        if (!r.ok) throw new Error(await r.text())
-        return r.json()
-      })
+    fetch(url, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (!cancelled) setSlots(d.slots ?? [])
       })
-      .catch((e) => {
-        if (!cancelled) setError(String(e))
+      .catch(() => {
+        if (!cancelled) setFailed(true)
       })
     return () => {
       cancelled = true
     }
-  }, [location, services, date])
+  }, [location, services, date, attempt])
 
-  if (error) {
+  if (failed) {
     return (
-      <div className="text-sm text-danger">
-        Não foi possível carregar as horas livres. Tenta outra vez daqui a pouco.
-        <span className="mt-1 block text-xs opacity-70">{error}</span>
+      <div className="rounded-md border-2 border-danger/40 bg-danger/5 p-4 text-sm" role="alert">
+        <p className="font-semibold">Não deu para carregar as horas livres.</p>
+        <p className="mt-1 text-muted">Verifica a ligação à internet e tenta outra vez.</p>
+        <button
+          type="button"
+          onClick={() => {
+            setFailed(false)
+            setSlots(null)
+            setAttempt((n) => n + 1)
+          }}
+          className="btn btn-sm mt-3"
+        >
+          Tentar outra vez
+        </button>
       </div>
     )
   }
 
-  if (slots === null) return <div className="text-muted">A ver a agenda…</div>
+  if (slots === null) return <div className="text-muted" role="status">A ver a agenda…</div>
 
   if (slots.length === 0) {
     return (
@@ -544,7 +631,7 @@ function DaySlots({
             </button>
           )}
           <button type="button" onClick={onOtherCity} className="btn-ghost px-4 py-1.5 text-sm">
-            Tentar em {cityName(location === "lisboa" ? "setubal" : "lisboa")}
+            Tentar em {cityName(otherCity(location))}
           </button>
         </div>
       </div>
@@ -567,150 +654,50 @@ function DaySlots({
   )
 }
 
-// ---------- STEP 3: details ----------
-function DetailsStep({
-  initial,
-  onSubmit,
+// ---------- STEP 3: confirm (account details, notes, send) ----------
+type Account =
+  | { signedIn: false }
+  | { signedIn: true; name: string; phone: string; email: string }
+
+function ConfirmStep({
+  choice,
   onBack,
+  onPickAnother,
+  onSuccess,
 }: {
-  initial: { name: string; phone: string; email: string; notes: string }
-  onSubmit: (data: {
-    name: string
-    phone: string
-    email: string
-    notes?: string
-  }) => void
+  choice: Required<Choice>
   onBack: () => void
+  onPickAnother: () => void
+  onSuccess: (p: SuccessPayload) => void
 }) {
-  const [name, setName] = useState(initial.name)
-  const [phone, setPhone] = useState(initial.phone)
-  const [email, setEmail] = useState(initial.email)
-  const [notes, setNotes] = useState(initial.notes)
-  const [err, setErr] = useState<string | null>(null)
-  // Booking needs an account: its details are used (changed in "Os meus dados")
-  const [fromAccount, setFromAccount] = useState(false)
+  const [account, setAccount] = useState<Account | null>(null)
+  // (Rendered in the browser only: the flow reads the URL inside <Suspense>)
+  const [notes, setNotes] = useState(readNotes)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<{ text: string; taken?: boolean } | null>(null)
+  const combo: Combo = useMemo(() => buildCombo(choice.services), [choice.services])
 
   useEffect(() => {
     fetch("/api/conta/sessao", { cache: "no-store" })
       .then((r) => r.json())
-      .then((s: { signedIn: boolean; name?: string; phone?: string; email?: string }) => {
-        if (!s.signedIn) return
-        setName(s.name ?? "")
-        setPhone((s.phone?.startsWith("351") ? s.phone.slice(3) : s.phone) ?? "")
-        setEmail(s.email ?? "")
-        setFromAccount(true)
-      })
-      .catch(() => {})
+      .then((s: Account) => setAccount(s))
+      .catch(() => setAccount({ signedIn: false }))
   }, [])
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const cleanPhone = phone.replace(/[^\d]/g, "")
-    const cleanEmail = email.trim()
-    if (name.trim().length < 2) return setErr("Nome demasiado curto")
-    if (!/^\d{9,15}$/.test(cleanPhone))
-      return setErr("Telefone inválido (9-15 dígitos, sem +)")
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail))
-      return setErr("Email inválido")
-    onSubmit({
-      name: name.trim(),
-      phone: cleanPhone,
-      email: cleanEmail,
-      notes: notes.trim() || undefined,
-    })
+  const whenLocal = useMemo(
+    () => formatLisbon(new Date(choice.slotIso), "EEEE, dd/MM/yyyy 'às' HH:mm"),
+    [choice.slotIso],
+  )
+
+  /** Sign in (or register) and come back to this step, with the choice in the URL. */
+  function signIn() {
+    writeNotes(notes.trim())
+    const here = `${window.location.pathname}${window.location.search}`
+    window.location.href = `/conta/entrar?next=${encodeURIComponent(here)}`
   }
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <BackButton onClick={onBack} />
-      <StepTitle>Os teus dados</StepTitle>
-      <div className="mt-5 space-y-4">
-        <Field label="Nome">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            readOnly={fromAccount}
-            required
-            autoComplete="name"
-            placeholder="João Silva"
-            className="input"
-          />
-        </Field>
-        <Field label="Telemóvel (com indicativo, sem +)">
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            readOnly={fromAccount}
-            required
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="351912345678"
-            className="input"
-          />
-        </Field>
-        <Field label="Email (para receberes a confirmação)">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            readOnly={fromAccount}
-            required
-            inputMode="email"
-            autoComplete="email"
-            placeholder="joao@exemplo.com"
-            className="input"
-          />
-        </Field>
-        {fromAccount && (
-          <p className="-mt-1 text-xs text-muted">
-            Dados da tua conta. Para os mudares, vai a{" "}
-            <a href="/conta/dados" className="link">
-              Os meus dados
-            </a>
-            .
-          </p>
-        )}
-        <Field label="Notas (opcional)">
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            placeholder="Ex.: o tipo de corte que queres"
-            className="input"
-          />
-        </Field>
-      </div>
-      {err && <div className="mt-3 text-sm text-danger">{err}</div>}
-      <div className="mt-7 flex justify-end">
-        <button type="submit" className="btn">
-          Continuar <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-    </form>
-  )
-}
-
-// ---------- STEP 4: confirm ----------
-function ConfirmStep({
-  state,
-  onBack,
-  onSuccess,
-}: {
-  state: Required<BookingState>
-  onBack: () => void
-  onSuccess: (p: SuccessPayload) => void
-}) {
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const combo: Combo = useMemo(() => buildCombo(state.services), [state.services])
-
-  const whenLocal = useMemo(
-    () =>
-      formatLisbon(new Date(state.slotIso), "EEEE, dd/MM/yyyy 'às' HH:mm"),
-    [state.slotIso],
-  )
-
-  async function confirm() {
+  async function send() {
+    if (!account?.signedIn) return signIn()
     setSubmitting(true)
     setError(null)
     try {
@@ -718,34 +705,35 @@ function ConfirmStep({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          location: state.location,
-          services: state.services,
-          startUtcIso: state.slotIso,
-          client: {
-            name: state.name,
-            phone: state.phone,
-            email: state.email,
-          },
-          notes: state.notes || undefined,
+          location: choice.location,
+          services: choice.services,
+          startUtcIso: choice.slotIso,
+          // The booking goes under the account; these only satisfy the schema
+          client: { name: account.name, phone: account.phone, email: account.email },
+          notes: notes.trim() || undefined,
         }),
       })
-      const json = await res.json()
+      const json = await res.json().catch(() => ({}))
       // Session ended meanwhile: sign in again and come back
-      if (res.status === 401 && json.signIn) {
-        window.location.href = "/conta/entrar?next=/marcar"
+      if (res.status === 401 && json.signIn) return signIn()
+      if (res.status === 409) {
+        setError({ text: json.error ?? "Essa hora já não está disponível.", taken: true })
         return
       }
-      if (!res.ok) throw new Error(json.error || "Erro desconhecido")
+      if (!res.ok) {
+        setError({ text: "Não deu para enviar o pedido. Tenta outra vez daqui a pouco." })
+        return
+      }
       onSuccess({
         bookingId: json.booking.id,
         clientToken: json.booking.clientToken,
         whenLocal: json.booking.whenLocal,
         serviceName: json.booking.service,
         priceEur: json.booking.priceEur,
-        location: state.location,
+        location: choice.location,
       })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+    } catch {
+      setError({ text: "Sem ligação. Verifica a internet e tenta outra vez." })
     } finally {
       setSubmitting(false)
     }
@@ -756,28 +744,93 @@ function ConfirmStep({
       <BackButton onClick={onBack} />
       <StepTitle>Confere e envia</StepTitle>
       <div className="mt-5 space-y-2 rounded-md border-2 border-ink/20 bg-paper p-5">
-        <Row label="Cidade" value={cityName(state.location)} />
+        <Row label="Cidade" value={cityName(choice.location)} />
         <Row label="Serviço" value={`${combo.name} (${combo.durationMin} min)`} />
         <Row label="Preço" value={formatPrice(combo.priceEur)} />
         <Row label="Quando" value={whenLocal} />
-        <Row label="Nome" value={`${state.name} · ${state.phone}`} />
-        <Row label="Email" value={state.email} />
-        {state.notes && <Row label="Notas" value={state.notes} />}
+        {account?.signedIn && (
+          <>
+            <div className="my-2 border-t border-ink/10" />
+            <Row
+              label="Nome"
+              value={`${account.name} · ${account.phone.startsWith("351") ? account.phone.slice(3) : account.phone}`}
+            />
+            <Row label="Email" value={account.email} />
+          </>
+        )}
       </div>
+      {account?.signedIn && (
+        <p className="mt-2 text-xs text-muted">
+          Dados da tua conta. Para os mudares, vai a{" "}
+          <a href="/conta/dados" className="link">
+            Os meus dados
+          </a>
+          .
+        </p>
+      )}
+
+      <label className="mt-5 block">
+        <span className="mb-1.5 block text-sm font-semibold">Notas (opcional)</span>
+        <textarea
+          value={notes}
+          onChange={(e) => {
+            setNotes(e.target.value)
+            // Kept for the way back from "Voltar" or from signing in
+            writeNotes(e.target.value)
+          }}
+          maxLength={300}
+          rows={2}
+          placeholder="Ex.: o tipo de corte que queres"
+          className="input"
+        />
+      </label>
+
+      {account && !account.signedIn && (
+        <div className="mt-5 rounded-md border-2 border-ink bg-yellow/25 p-4">
+          <p className="font-semibold">Falta só entrares na tua conta.</p>
+          <p className="mt-1 text-sm text-ink/80">
+            Basta o teu email: recebes um código e voltas logo a este passo, com
+            tudo o que escolheste.
+          </p>
+        </div>
+      )}
+
       <p className="mt-4 text-sm text-muted">
         Pagas no fim, em <strong className="text-ink">MB WAY</strong> ou{" "}
         <strong className="text-ink">dinheiro</strong>. Depois de enviares o
         pedido, recebes a confirmação por email.
       </p>
-      {error && <div className="mt-3 text-sm text-danger">{error}</div>}
-      <div className="mt-7 flex justify-end">
-        <button
-          disabled={submitting}
-          onClick={confirm}
-          className={cn("btn", submitting && "cursor-wait")}
-        >
-          {submitting ? "A enviar…" : "Enviar pedido"}
-        </button>
+
+      {error && (
+        <div className="mt-4 rounded-md border-2 border-danger/40 bg-danger/5 p-3 text-sm" role="alert">
+          <p className="font-semibold text-danger">{error.text}</p>
+          {error.taken && (
+            <button type="button" onClick={onPickAnother} className="btn btn-sm mt-3">
+              Escolher outra hora
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* A taken time can only be changed, not sent again */}
+      <div className={cn("mt-7 flex justify-end", error?.taken && "hidden")}>
+        {account === null ? (
+          <button disabled className="btn cursor-wait">
+            A carregar…
+          </button>
+        ) : account.signedIn ? (
+          <button
+            disabled={submitting}
+            onClick={send}
+            className={cn("btn", submitting && "cursor-wait")}
+          >
+            {submitting ? "A enviar…" : "Enviar pedido"}
+          </button>
+        ) : (
+          <button onClick={signIn} className="btn">
+            Entrar e enviar <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -796,7 +849,9 @@ function SuccessStep({
   return (
     <div className="text-center">
       <p className="font-script -rotate-3 text-5xl text-jungle">Obrigado!</p>
-      <h2 className="mt-4 text-3xl sm:text-4xl">Pedido enviado</h2>
+      <h2 id="marcar-passo" tabIndex={-1} className="mt-4 text-3xl outline-none sm:text-4xl">
+        Pedido enviado
+      </h2>
       <p className="mt-4 text-lg font-semibold">{payload.whenLocal}</p>
       <p className="mt-1 text-muted">
         {payload.serviceName} · {formatPrice(payload.priceEur)} ·{" "}
@@ -833,7 +888,11 @@ function SuccessStep({
 
 // ---------- atoms ----------
 function StepTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-2 text-2xl sm:text-3xl">{children}</h2>
+  return (
+    <h2 id="marcar-passo" tabIndex={-1} className="mb-2 text-2xl outline-none sm:text-3xl">
+      {children}
+    </h2>
+  )
 }
 
 function FieldLabel({
@@ -855,21 +914,6 @@ function BackButton({ onClick }: { onClick: () => void }) {
     >
       <ArrowLeft className="h-3.5 w-3.5" /> Voltar
     </button>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-semibold">{label}</span>
-      {children}
-    </label>
   )
 }
 

@@ -47,7 +47,8 @@ export function HeaderAccount({
         <Link href="/conta/entrar" onClick={retireSignupHint} className="btn btn-sm whitespace-nowrap">
           Login/Registar
         </Link>
-        <SignupHint />
+        {/* Booking asks for the account on its last step; the bubble would cover its title */}
+        {!pathname.startsWith("/marcar") && <SignupHint />}
       </span>
     )
   }

@@ -23,13 +23,13 @@ export default async function EntrarPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const next = safeNext(sp.next)
   if ((await currentClientSession())?.client) redirect(next)
-  // Sent here by "Marcar corte" (booking needs an account)
+  // Sent here from the booking's last step (sending it needs an account)
   const toBook = next.startsWith("/marcar")
 
   return (
     <AuthCard
       title="Entrar"
-      back={{ href: "/" }}
+      back={{ href: toBook ? next : "/" }}
       intro={
         toBook
           ? "Entra com o teu email para continuar a marcação. Enviamos-te um código e, se ainda não tiveres conta, criamo-la nesse momento."
