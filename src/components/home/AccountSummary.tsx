@@ -8,6 +8,7 @@ import { ExpressSlot } from "@/components/ExpressSlot"
 import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
 import type { AccountSummary } from "@/app/api/conta/resumo/route"
+import type { FreeSlot } from "@/lib/next-slot"
 import { SESSION_ENDED_EVENT } from "@/lib/nav-events"
 
 // The home page stays static for everyone; a signed-in client's bits are
@@ -79,8 +80,7 @@ export function NextBookingBar() {
  * Hero: the main "Marcar corte" button and, for clients with a history,
  * their usual booking at the next free times right under it (one tap each).
  */
-export function HeroCta() {
-  const summary = useContext(Ctx)
+export function HeroCta({ nextSlot }: { nextSlot: FreeSlot | null }) {
   const s = useSignedIn()
   const express = s?.express
   return (
@@ -89,7 +89,7 @@ export function HeroCta() {
         Marcar corte <ArrowRight className="h-5 w-5" />
       </Link>
       {/* Once we know who's here: everyone without express times gets the next free slot */}
-      {summary && !express?.slots.length && <NextFreeSlot />}
+      {nextSlot && !express?.slots.length && <NextFreeSlot slot={nextSlot} />}
       {/* contain:inline-size — the boxes take the button's width instead of widening the hero column */}
       {s && !express?.slots.length && (
         <div data-express className="mt-4 w-full rounded-lg border-2 border-dashed border-ink/40 p-3 text-left [contain:inline-size]">
@@ -110,17 +110,8 @@ export function HeroCta() {
 }
 
 /** Phones: "Próxima vaga: hoje às 16:00 em Setúbal" under the main button. */
-type FreeSlot = { when: string; time: string; city: string; label: string }
-
-function NextFreeSlot() {
-  const [slot, setSlot] = useState<FreeSlot | null>(null)
-  useEffect(() => {
-    fetch("/api/slots/proxima", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d: { slot: FreeSlot | null }) => setSlot(d.slot))
-      .catch(() => {})
-  }, [])
-  if (!slot) return null
+/** "Próxima vaga" ticket (the slot comes with the page, so it shows at once). */
+function NextFreeSlot({ slot }: { slot: FreeSlot }) {
   return (
     // A ticket: "Próxima vaga" with a live dot on the stub, the time big on the
     // right, a dashed tear line with notches between. contain:inline-size:

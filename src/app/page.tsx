@@ -9,6 +9,7 @@ import { StickyCta } from "@/components/home/StickyCta"
 import { ReelsPhone, ReelsRow } from "@/components/home/ReelsShowcase"
 import { REELS } from "@/lib/reels"
 import { STAMPS_TO_FREE } from "@/lib/loyalty"
+import { nextFreeCut, type FreeSlot } from "@/lib/next-slot"
 import { PriceBoard } from "@/components/PriceBoard"
 import { LOCATIONS, groupedWeeklyHours } from "@/lib/schedule"
 import { getServiceItem, formatPriceShort } from "@/lib/services"
@@ -17,7 +18,13 @@ import { barbershopJsonLd } from "@/lib/structured-data"
 
 const TAGLINE = "Corte, barba e sobrancelha."
 
-export default function HomePage() {
+// Static, rebuilt at most once a minute: keeps "Próxima vaga" fresh while the
+// page loads instantly (the slot needs at least an hour's notice anyway)
+export const revalidate = 60
+
+export default async function HomePage() {
+  // The page must still render if the agenda can't be read
+  const nextSlot = await nextFreeCut().catch(() => null)
   return (
     <AccountSummaryProvider>
       <main>
@@ -31,7 +38,7 @@ export default function HomePage() {
             so the next section only starts below the fold */}
         <div className="flex min-h-[calc(100svh-62px)] flex-col sm:min-h-[calc(100svh-70px)]">
           <NextBookingBar />
-          <Hero />
+          <Hero nextSlot={nextSlot} />
         </div>
         <HeroIntro />
         <StickyCta />
@@ -45,7 +52,7 @@ export default function HomePage() {
   )
 }
 
-function Hero() {
+function Hero({ nextSlot }: { nextSlot: FreeSlot | null }) {
   const cut = getServiceItem("corte")
 
   return (
@@ -106,7 +113,7 @@ function Hero() {
             >
               {TAGLINE}
             </span>
-            <HeroCta />
+            <HeroCta nextSlot={nextSlot} />
             <Link href="#precos" className="link mt-4 font-semibold md:group-has-[[data-express]]/hero:mt-[clamp(0.5rem,1.5vh,1rem)]">
               Ver preços
             </Link>
