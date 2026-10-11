@@ -75,6 +75,7 @@ export function NextBookingBar() {
  * their usual booking at the next free times right under it (one tap each).
  */
 export function HeroCta() {
+  const summary = useContext(Ctx)
   const s = useSignedIn()
   const express = s?.express
   return (
@@ -82,6 +83,8 @@ export function HeroCta() {
       <Link href="/marcar" className="btn h-14 w-full text-lg">
         Marcar corte <ArrowRight className="h-5 w-5" />
       </Link>
+      {/* Once we know who's here: everyone without express times gets the next free slot */}
+      {summary && !express?.slots.length && <NextFreeSlot />}
       {/* contain:inline-size — the boxes take the button's width instead of widening the hero column */}
       {s && !express?.slots.length && (
         <div data-express className="mt-4 w-full rounded-lg border-2 border-dashed border-ink/40 p-3 text-left [contain:inline-size]">
@@ -98,6 +101,24 @@ export function HeroCta() {
       )}
       {express && express.slots.length > 0 && <ExpressBox express={express} />}
     </>
+  )
+}
+
+/** Phones: "Próxima vaga: hoje às 16:00 em Setúbal" under the main button. */
+function NextFreeSlot() {
+  const [label, setLabel] = useState<string | null>(null)
+  useEffect(() => {
+    fetch("/api/slots/proxima", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { slot: { label: string } | null }) => setLabel(d.slot?.label ?? null))
+      .catch(() => {})
+  }, [])
+  if (!label) return null
+  return (
+    // contain:inline-size: wraps to the button's width on narrow phones instead of widening the column
+    <Link href="/marcar?servicos=corte" className="mt-3 w-full text-center text-sm text-ink/80 [contain:inline-size] md:hidden">
+      Próxima vaga: <strong className="font-semibold text-ink">{label}</strong>
+    </Link>
   )
 }
 

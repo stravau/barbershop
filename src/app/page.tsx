@@ -48,13 +48,13 @@ function Hero() {
     // then scales with the screen height so all of it fits on the first screen
     // (sizes only shrink as much as needed — tall screens keep them).
     <section className="group/hero relative overflow-hidden md:flex md:flex-1 md:items-center">
-      {/* The logo, big and faint behind everything (behind the first screen
-          on phones, where the logo card comes further down). The cut-out
-          PNG, not logo.jpeg: its black square darkened the page */}
+      {/* From md up: the logo, big and faint behind everything (not on
+          phones, where it crowded the text). The cut-out PNG, not logo.jpeg:
+          its black square darkened the page */}
       <div
         aria-hidden="true"
         data-hero-logo
-        className="pointer-events-none absolute inset-0 flex items-start justify-center pt-6 md:items-center md:pt-0"
+        className="pointer-events-none absolute inset-0 hidden justify-center md:flex md:items-center"
       >
         <Image
           src="/logo-mark.png"
@@ -72,18 +72,23 @@ function Hero() {
         <div className="flex flex-col items-center text-center">
           {/* "Barbershop" is sized in em so it scales with "TARZAN'S", and
               the inline-flex column centres it under the name */}
+          {/* Phones: the "Corte 10 €" sticker sits in the free corner beside "Barbershop" */}
+          <div className="relative">
           <h1 className="inline-flex flex-col items-center text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9] max-[380px]:text-[calc((100vw-2rem)/5.7)] md:group-has-[[data-express]]/hero:text-[clamp(3.5rem,min(11vw,calc(27.5vh-5.15rem)),7.25rem)]">
             <span className="print-shadow">TARZAN&apos;S</span>
             <span className="font-script mt-[0.02em] -rotate-2 text-[0.66em] leading-none text-jungle">
               Barbershop
             </span>
           </h1>
+          {cut && <CutPrice price={cut.priceEur} small className="-right-1 -bottom-5 md:hidden" />}
+          </div>
 
           <p className="font-display mt-9 text-2xl max-[400px]:text-[calc((100vw-2rem)/14.8)] sm:text-3xl md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">{TAGLINE}</p>
           <p className="mt-4 max-w-md text-lg leading-relaxed text-ink/80 md:group-has-[[data-express]]/hero:mt-[clamp(0.5rem,1.5vh,1rem)]">
             Em Setúbal durante a semana e em Lisboa à sexta e ao sábado.
-            Escolhe o serviço, o dia e a hora. Faz a tua marcação em menos de
-            1&nbsp;minuto.
+            <span className="hidden md:inline">
+              {" "}Escolhe o serviço, o dia e a hora. Faz a tua marcação em menos de 1&nbsp;minuto.
+            </span>
           </p>
 
           {/* Same width as the tagline (an invisible copy of it sizes this
@@ -112,38 +117,20 @@ function Hero() {
           {cut && <CutPrice price={cut.priceEur} className="-top-10 -right-20" />}
         </div>
 
-        {/* Phones: the logo (the videos are in the Instagram band below) */}
-        <div className="relative mx-auto w-full max-w-[340px] sm:max-w-[420px] md:hidden">
-          <div className="-rotate-2 rounded-lg border-2 border-ink bg-black p-2 shadow-[8px_8px_0_var(--jungle)]">
-            {/* The logo file has wide black margins — crop into the illustration */}
-            <div className="relative aspect-[1.18] overflow-hidden rounded-md border border-yellow/50">
-              <Image
-                src="/logo.jpeg"
-                alt="Ilustração do Tarzan entre dois postes de barbeiro"
-                width={900}
-                height={900}
-                priority
-                className="absolute max-w-none"
-                style={{ width: "128.2%", left: "-14.1%", top: "-19.7%" }}
-              />
-            </div>
-          </div>
-          {cut && <CutPrice price={cut.priceEur} className="-top-5 -right-2 sm:-right-7" />}
-        </div>
       </div>
     </section>
   )
 }
 
 /** The round "Corte 10 €" sticker on the hero picture. */
-function CutPrice({ price, className }: { price: number; className: string }) {
+function CutPrice({ price, className, small = false }: { price: number; className: string; small?: boolean }) {
   return (
     <div
-      className={`absolute z-10 grid h-28 w-28 rotate-[10deg] place-items-center rounded-full border-2 border-ink bg-yellow text-center shadow-[3px_3px_0_var(--ink)] ${className}`}
+      className={`absolute z-10 grid ${small ? "h-[4.5rem] w-[4.5rem]" : "h-28 w-28"} rotate-[10deg] place-items-center rounded-full border-2 border-ink bg-yellow text-center shadow-[3px_3px_0_var(--ink)] ${className}`}
     >
       <div>
-        <div className="caps text-xs">Corte</div>
-        <div className="font-display text-[1.9rem] leading-none">{formatPriceShort(price)}</div>
+        <div className={`caps ${small ? "text-[0.6rem]" : "text-xs"}`}>Corte</div>
+        <div className={`font-display ${small ? "text-xl" : "text-[1.9rem]"} leading-none`}>{formatPriceShort(price)}</div>
       </div>
     </div>
   )
