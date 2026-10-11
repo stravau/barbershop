@@ -120,9 +120,17 @@ function NextFreeSlot() {
   }, [])
   if (!label) return null
   return (
-    // contain:inline-size: wraps to the button's width on narrow phones instead of widening the column
-    <Link href="/marcar?servicos=corte" className="mt-3 w-full text-center text-sm text-ink/80 [contain:inline-size] md:hidden">
-      Próxima vaga: <strong className="font-semibold text-ink">{label}</strong>
+    // A green block like the next-booking bar. contain:inline-size: takes the
+    // button's width instead of widening the column on narrow phones
+    <Link
+      href="/marcar?servicos=corte"
+      className="mt-3 flex w-full items-center justify-between gap-3 rounded-md border-2 border-ink bg-jungle px-3 py-2 text-left text-paper shadow-[3px_3px_0_var(--ink)] [contain:inline-size] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_var(--ink)] md:hidden"
+    >
+      <span className="min-w-0">
+        <span className="caps block text-[0.65rem] text-yellow">Próxima vaga</span>
+        <span className="block text-sm font-semibold">{label}</span>
+      </span>
+      <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
     </Link>
   )
 }
