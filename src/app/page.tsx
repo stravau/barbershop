@@ -59,6 +59,11 @@ function Hero({ nextSlot }: { nextSlot: FreeSlot | null }) {
     // then scales with the screen height so all of it fits on the first screen
     // (sizes only shrink as much as needed — tall screens keep them).
     <section className="group/hero relative isolate flex flex-1 items-center overflow-hidden">
+      {/* Poster rays centred on the first screen's cream area (clipped by the section) */}
+      <div
+        aria-hidden="true"
+        className="sunburst pointer-events-none absolute top-1/2 left-1/2 -z-10 aspect-square w-[max(150vw,150vh)] -translate-x-1/2 -translate-y-1/2"
+      />
       <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-4 py-10 sm:px-6 md:grid-cols-[1.15fr_1fr] md:py-16 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
         {/* (On phones under ~400px the name and tagline shrink to fit the width.)
             Everything is centred under the name. From md up the grid column
@@ -68,11 +73,6 @@ function Hero({ nextSlot }: { nextSlot: FreeSlot | null }) {
               the inline-flex column centres it under the name */}
           {/* Phones: the "Corte 10 €" sticker sits in the free corner beside "Barbershop" */}
           <div className="relative">
-          {/* Poster rays centred on the name (behind the whole hero; clipped by the section) */}
-          <div
-            aria-hidden="true"
-            className="sunburst pointer-events-none absolute top-1/2 left-1/2 -z-10 aspect-square w-[max(150vw,150vh)] -translate-x-1/2 -translate-y-1/2 md:w-[1600px]"
-          />
           <h1 className="inline-flex flex-col items-center text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9] max-[380px]:text-[calc((100vw-2rem)/5.7)] md:group-has-[[data-express]]/hero:text-[clamp(3.5rem,min(11vw,calc(27.5vh-5.15rem)),7.25rem)]">
             <span className="print-shadow hero-anim">TARZAN&apos;S</span>
             <span className="font-script hero-anim mt-[0.02em] -rotate-2 text-[0.66em] leading-none text-jungle [--d:.12s]">
