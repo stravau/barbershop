@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowRight, Zap } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { requireClient } from "@/lib/client-auth"
 import { clientHabit, suggestSlots } from "@/lib/express"
@@ -9,6 +9,8 @@ import { formatPrice } from "@/lib/services"
 import { formatLisbon } from "@/lib/tz"
 import { STAMPS_TO_FREE, cardMessage, stamps } from "@/lib/loyalty"
 import { Card, Notice } from "@/app/conta/_components/ContaShell"
+import { ExpressFrame } from "@/app/conta/_components/ExpressFrame"
+import { ExpressCardSkeleton } from "@/app/conta/_components/Skeletons"
 import { ExpressSlot } from "@/components/ExpressSlot"
 
 export const metadata: Metadata = { title: "A minha conta", robots: "noindex" }
@@ -46,42 +48,12 @@ export default async function ContaPage({ searchParams }: PageProps) {
       {sp.erro && ERRORS[sp.erro] && <Notice tone="error">{ERRORS[sp.erro]}</Notice>}
 
       {/* The suggestions check the agenda: they stream in, the rest shows at once */}
-      <Suspense fallback={<ExpressSkeleton />}>
+      <Suspense fallback={<ExpressCardSkeleton />}>
         <ExpressCard clientId={client.id} preferredLocation={client.preferredLocation} hasUpcoming={hasUpcoming} />
       </Suspense>
 
       <LoyaltyCard visits={visits} />
     </>
-  )
-}
-
-/** The express card's frame: a black band with the title on top. */
-function ExpressFrame({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="overflow-hidden rounded-lg border-2 border-ink bg-card shadow-[6px_6px_0_var(--ink)]">
-      <h2 className="flex items-center gap-2.5 border-b-2 border-ink bg-ink px-5 py-3.5 text-2xl text-yellow sm:px-6 sm:text-3xl">
-        <Zap className="h-6 w-6 fill-yellow" aria-hidden="true" />
-        Marcação express
-      </h2>
-      {children}
-    </section>
-  )
-}
-
-function ExpressSkeleton() {
-  return (
-    <ExpressFrame>
-      <div className="animate-pulse motion-reduce:animate-none" aria-label="A procurar horas livres">
-        <div className="border-b-2 border-dashed border-ink/20 bg-paper-dark/50 px-5 py-3 sm:px-6">
-          <div className="h-4 w-3/4 rounded bg-ink/10" />
-        </div>
-        <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-[70px] rounded-md border-2 border-ink/15 bg-ink/5" />
-          ))}
-        </div>
-      </div>
-    </ExpressFrame>
   )
 }
 
