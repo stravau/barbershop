@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Zap } from "lucide-react"
@@ -7,7 +8,7 @@ import { clientHabit, suggestSlots } from "@/lib/express"
 import { formatPrice } from "@/lib/services"
 import { formatLisbon } from "@/lib/tz"
 import { STAMPS_TO_FREE, cardMessage, stamps } from "@/lib/loyalty"
-import { Card, ContaShell, Notice } from "./_components/ContaShell"
+import { Card, Notice } from "@/app/conta/_components/ContaShell"
 import { ExpressSlot } from "@/components/ExpressSlot"
 
 export const metadata: Metadata = { title: "A minha conta", robots: "noindex" }
@@ -31,23 +32,62 @@ export default async function ContaPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const now = new Date()
 
-  const [habit, bookings] = await Promise.all([
-    clientHabit(client.id, client.preferredLocation),
-    prisma.booking.findMany({
-      where: { clientId: client.id },
-      select: { status: true, startUtc: true, serviceId: true },
-    }),
-  ])
-  const suggestions = habit ? await suggestSlots(habit) : []
+  const bookings = await prisma.booking.findMany({
+    where: { clientId: client.id },
+    select: { status: true, startUtc: true, serviceId: true },
+  })
   const visits = stamps(bookings, now)
   const hasUpcoming = bookings.some(
     (b) => b.startUtc >= now && (b.status === "PENDING" || b.status === "CONFIRMED"),
   )
 
   return (
-    <ContaShell name={client.name} active="/conta">
+    <>
       {sp.erro && ERRORS[sp.erro] && <Notice tone="error">{ERRORS[sp.erro]}</Notice>}
 
+      {/* The suggestions check the agenda: they stream in, the rest shows at once */}
+      <Suspense fallback={<ExpressSkeleton />}>
+        <ExpressCard clientId={client.id} preferredLocation={client.preferredLocation} hasUpcoming={hasUpcoming} />
+      </Suspense>
+
+      <LoyaltyCard visits={visits} />
+    </>
+  )
+}
+
+function ExpressSkeleton() {
+  return (
+    <Card>
+      <h2 className="flex items-center gap-2 text-2xl sm:text-3xl">
+        <Zap className="h-6 w-6 fill-yellow" aria-hidden="true" />
+        Marcação express
+      </h2>
+      <div className="mt-4 animate-pulse space-y-3 motion-reduce:animate-none" aria-label="A procurar horas livres">
+        <div className="h-4 w-2/3 rounded bg-paper-dark" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-12 rounded-md border-2 border-ink/15 bg-paper-dark/60" />
+          ))}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+/** "Marcação express": the usual booking and the next free times that fit it. */
+async function ExpressCard({
+  clientId,
+  preferredLocation,
+  hasUpcoming,
+}: {
+  clientId: string
+  preferredLocation: string | null
+  hasUpcoming: boolean
+}) {
+  const habit = await clientHabit(clientId, preferredLocation)
+  const suggestions = habit ? await suggestSlots(habit) : []
+
+  return (
       <Card>
         <h2 className="flex items-center gap-2 text-2xl sm:text-3xl">
           <Zap className="h-6 w-6 fill-yellow" aria-hidden="true" />
@@ -102,9 +142,6 @@ export default async function ContaPage({ searchParams }: PageProps) {
           {habit ? "Outro serviço ou horário" : "Fazer uma marcação"}
         </Link>
       </Card>
-
-      <LoyaltyCard visits={visits} />
-    </ContaShell>
   )
 }
 

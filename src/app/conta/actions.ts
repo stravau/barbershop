@@ -1,6 +1,7 @@
 "use server"
 
 import { redirect } from "next/navigation"
+import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { NO_PHONE_PREFIX, normalizePhone } from "@/lib/clients"
 import { createBookingRequest } from "@/lib/bookings"
@@ -56,12 +57,9 @@ export async function updateDetails(form: FormData): Promise<void> {
       standingNote: note || null,
     },
   })
+  // The greeting in the client area's layout shows the name
+  revalidatePath("/conta", "layout")
   redirect("/conta/dados?guardado=1")
-}
-
-export async function logout(): Promise<void> {
-  await endClientSession()
-  redirect("/")
 }
 
 /**

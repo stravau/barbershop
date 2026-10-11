@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 import { requireClient } from "@/lib/client-auth"
-import { Card, ContaShell, Notice } from "../_components/ContaShell"
-import { ConfirmForm } from "../_components/ConfirmSubmit"
+import { Card, Notice } from "@/app/conta/_components/ContaShell"
+import { ConfirmForm } from "@/app/conta/_components/ConfirmSubmit"
 import { LogoutButton } from "@/components/LogoutButton"
-import { deleteAccount, updateDetails } from "../actions"
+import { deleteAccount, updateDetails } from "@/app/conta/actions"
 
 export const metadata: Metadata = { title: "Os meus dados", robots: "noindex" }
 export const dynamic = "force-dynamic"
@@ -26,7 +26,7 @@ export default async function DadosPage({ searchParams }: PageProps) {
   const phone = client.phone.startsWith("351") ? client.phone.slice(3) : client.phone
 
   return (
-    <ContaShell name={client.name} active="/conta/dados">
+    <>
       {sp.guardado && <Notice tone="ok">Dados guardados.</Notice>}
       {sp.erro && ERRORS[sp.erro] && <Notice tone="error">{ERRORS[sp.erro]}</Notice>}
 
@@ -88,6 +88,6 @@ export default async function DadosPage({ searchParams }: PageProps) {
           Apagar conta
         </ConfirmForm>
       </div>
-    </ContaShell>
+    </>
   )
 }

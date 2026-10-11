@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
-import { NAV_START_EVENT } from "@/lib/nav-events"
+import { NAV_DONE_EVENT, NAV_START_EVENT } from "@/lib/nav-events"
 
 
 // Whether this tab has moved between pages of the site (BackLink uses it to
@@ -32,10 +32,13 @@ export function TopLoader() {
       if (form.method?.toLowerCase() === "dialog" || form.dataset.noLoader !== undefined) return
       start()
     }
+    const done = () => setState((s) => (s === "loading" ? "done" : s))
     window.addEventListener(NAV_START_EVENT, start)
+    window.addEventListener(NAV_DONE_EVENT, done)
     document.addEventListener("submit", onSubmit, true)
     return () => {
       window.removeEventListener(NAV_START_EVENT, start)
+      window.removeEventListener(NAV_DONE_EVENT, done)
       document.removeEventListener("submit", onSubmit, true)
     }
   }, [])

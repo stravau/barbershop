@@ -7,10 +7,10 @@ import { formatPrice } from "@/lib/services"
 import { formatLisbon } from "@/lib/tz"
 import { getLocationAddress, mapsUrl } from "@/lib/addresses"
 import { cn } from "@/lib/utils"
-import { Card, ContaShell, Notice } from "../_components/ContaShell"
+import { Card, Notice } from "@/app/conta/_components/ContaShell"
 import { ActionForm } from "@/components/ActionForm"
 import { LATE_CANCEL_HOURS, hoursUntil } from "@/lib/booking-status"
-import { cancelByClientAction } from "../../marcacao/[id]/actions"
+import { cancelByClientAction } from "@/app/marcacao/[id]/actions"
 
 export const metadata: Metadata = { title: "As minhas marcações", robots: "noindex" }
 export const dynamic = "force-dynamic"
@@ -45,7 +45,7 @@ export default async function MarcacoesPage({ searchParams }: PageProps) {
   const past = bookings.filter((b) => !upcoming.includes(b))
 
   return (
-    <ContaShell name={client.name} active="/conta/marcacoes">
+    <>
       {sp.cancelada === "1" && <Notice tone="ok">Marcação cancelada. O barbeiro já foi avisado.</Notice>}
       {sp.cancelada && sp.cancelada !== "1" && (
         <Notice tone="error">
@@ -149,7 +149,7 @@ export default async function MarcacoesPage({ searchParams }: PageProps) {
           ))}
         </ul>
       )}
-    </ContaShell>
+    </>
   )
 }
 

@@ -18,6 +18,7 @@ import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site"
 import { barbershopJsonLd } from "@/lib/structured-data"
 
 const TAGLINE = "Corte, barba e sobrancelha."
+const CUT = getServiceItem("corte")
 
 // "Próxima vaga" is the same for everyone: worked out at most once a minute
 // (a slot needs at least an hour's notice anyway)
@@ -39,7 +40,9 @@ export default async function HomePage() {
         {/* From md up the first screen is all cream: the bar and the hero fill the
             height under the header (70px) and the hero's content sits centred,
             so the next section only starts below the fold */}
-        <div className="flex min-h-[calc(100svh-62px)] flex-col sm:min-h-[calc(100svh-70px)]">
+        {/* Phones: the quick facts run in a strip stuck under the header */}
+        <Marquee items={["Pagas no fim", `${STAMPS_TO_FREE + 1}.º corte grátis`, "Setúbal e Lisboa", CUT ? `Corte a ${formatPriceShort(CUT.priceEur)}` : null]} />
+        <div className="flex min-h-[calc(100svh-62px-38px)] flex-col sm:min-h-[calc(100svh-70px-38px)] md:min-h-[calc(100svh-70px)]">
           <NextBookingBar />
           <Hero nextSlot={nextSlot} />
         </div>
@@ -92,9 +95,6 @@ function Hero({ nextSlot }: { nextSlot: FreeSlot | null }) {
             Marca em menos de 1&nbsp;minuto.
           </p>
 
-          {/* Phones: a strip running across the screen with the quick facts */}
-          <Marquee items={["Pagas no fim", `${STAMPS_TO_FREE + 1}.º corte grátis`, "Setúbal e Lisboa", cut ? `Corte a ${formatPriceShort(cut.priceEur)}` : null]} />
-
           {/* Same width as the tagline (an invisible copy of it sizes this
               column), centred under "Barbershop" */}
           <div className="hero-anim mt-9 grid w-max max-w-full justify-items-center [--d:.42s] md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">
@@ -127,17 +127,18 @@ function Hero({ nextSlot }: { nextSlot: FreeSlot | null }) {
 }
 
 /**
- * Phones: a dark strip, slightly tilted, running across the screen with the
- * quick facts (two copies of the list slide left for a seamless loop).
+ * Phones: a dark strip stuck under the header with the quick facts (two
+ * copies of the list slide left for a seamless loop). 38px tall: the first
+ * screen's height accounts for it.
  */
 function Marquee({ items }: { items: (string | null)[] }) {
   const list = items.filter((i): i is string => !!i)
   return (
-    // contain:inline-size keeps the full-width strip from widening the hero
-    // column; the strip itself is centred on the screen and runs edge to edge
-    <div className="hero-anim mt-7 w-full [--d:.36s] [contain:inline-size] md:hidden" aria-label={list.join(", ")}>
-      <div className="relative left-1/2 w-screen -translate-x-1/2 -rotate-2 overflow-hidden border-y-2 border-ink bg-ink py-2 text-paper">
-      <div className="flex w-max animate-[marquee_20s_linear_infinite] motion-reduce:animate-none">
+    <div
+      aria-label={list.join(", ")}
+      className="sticky top-[62px] z-20 h-[38px] overflow-hidden border-b-2 border-ink bg-ink text-paper sm:top-[70px] md:hidden"
+    >
+      <div className="flex h-full w-max animate-[marquee_20s_linear_infinite] items-center motion-reduce:animate-none">
         {[0, 1].map((copy) => (
           <span key={copy} aria-hidden="true" className="caps flex shrink-0 items-center gap-4 pr-4 text-sm">
             {list.map((item) => (
@@ -148,7 +149,6 @@ function Marquee({ items }: { items: (string | null)[] }) {
             ))}
           </span>
         ))}
-      </div>
       </div>
     </div>
   )

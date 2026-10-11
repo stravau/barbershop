@@ -12,6 +12,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Dynamic pages already visited are kept for 30 s in the browser, so going
+    // back and forth (e.g. the client area's tabs) is instant. Server actions
+    // and router.refresh() still update them.
+    staleTimes: { dynamic: 30 },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

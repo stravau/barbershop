@@ -3,6 +3,7 @@
 // session is a database row, so it can be ended.
 
 import { createHash, randomInt } from "node:crypto"
+import { cache } from "react"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { prisma } from "./prisma"
@@ -113,7 +114,7 @@ async function findClientByEmail(email: string) {
 }
 
 /** The signed-in client session (and their client record, once registered). */
-export async function currentClientSession() {
+export const currentClientSession = cache(async function currentClientSession() {
   const id = await verify("client", (await cookies()).get(CLIENT_COOKIE_NAME)?.value)
   if (!id) return null
   const session = await prisma.clientSession.findUnique({ where: { id } })
@@ -125,7 +126,7 @@ export async function currentClientSession() {
     ? await prisma.client.findUnique({ where: { id: session.clientId } })
     : null
   return { session, client }
-}
+})
 
 /** For client-area pages/actions: signed in AND registered, else redirect. */
 export async function requireClient() {
