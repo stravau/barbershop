@@ -1,11 +1,12 @@
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Star, Wallet } from "lucide-react"
 import { InstagramIcon } from "@/components/InstagramIcon"
 import { NextBookingBar, AccountSummaryProvider, HeroCta } from "@/components/home/AccountSummary"
 import { StampCard } from "@/components/home/StampCard"
 import { ReelsPhone, ReelsRow } from "@/components/home/ReelsShowcase"
 import { REELS } from "@/lib/reels"
+import { STAMPS_TO_FREE } from "@/lib/loyalty"
 import { PriceBoard } from "@/components/PriceBoard"
 import { LOCATIONS, groupedWeeklyHours } from "@/lib/schedule"
 import { getServiceItem, formatPriceShort } from "@/lib/services"
@@ -26,7 +27,7 @@ export default function HomePage() {
         {/* From md up the first screen is all cream: the bar and the hero fill the
             height under the header (70px) and the hero's content sits centred,
             so the next section only starts below the fold */}
-        <div className="md:flex md:min-h-[calc(100svh-70px)] md:flex-col">
+        <div className="flex min-h-[calc(100svh-62px)] flex-col sm:min-h-[calc(100svh-70px)]">
           <NextBookingBar />
           <Hero />
         </div>
@@ -47,7 +48,7 @@ function Hero() {
     // With the express box (signed-in client) the hero is taller; from md up it
     // then scales with the screen height so all of it fits on the first screen
     // (sizes only shrink as much as needed — tall screens keep them).
-    <section className="group/hero relative overflow-hidden md:flex md:flex-1 md:items-center">
+    <section className="group/hero relative flex flex-1 items-center overflow-hidden">
       {/* From md up: the logo, big and faint behind everything (not on
           phones, where it crowded the text). The cut-out PNG, not logo.jpeg:
           its black square darkened the page */}
@@ -65,7 +66,7 @@ function Hero() {
           className="w-[120vw] max-w-none opacity-[0.1] select-none md:h-[75%] md:w-auto"
         />
       </div>
-      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-4 pt-12 pb-16 sm:px-6 md:grid-cols-[1.15fr_1fr] md:py-16 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
+      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-4 py-10 sm:px-6 md:grid-cols-[1.15fr_1fr] md:py-16 md:group-has-[[data-express]]/hero:pt-[clamp(1rem,4vh,5rem)] md:group-has-[[data-express]]/hero:pb-[clamp(1.25rem,4vh,6rem)]">
         {/* (On phones under ~400px the name and tagline shrink to fit the width.)
             Everything is centred under the name. From md up the grid column
             is exactly as wide as "TARZAN'S" (its min-content). */}
@@ -86,10 +87,19 @@ function Hero() {
           <p className="font-display mt-9 text-2xl max-[400px]:text-[calc((100vw-2rem)/14.8)] sm:text-3xl md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">{TAGLINE}</p>
           <p className="mt-4 max-w-md text-lg leading-relaxed text-ink/80 md:group-has-[[data-express]]/hero:mt-[clamp(0.5rem,1.5vh,1rem)]">
             Em Setúbal durante a semana e em Lisboa à sexta e ao sábado.
-            <span className="hidden md:inline">
-              {" "}Escolhe o serviço, o dia e a hora. Faz a tua marcação em menos de 1&nbsp;minuto.
-            </span>
+            Escolhe o serviço, o dia e a hora. Faz a tua marcação em menos de
+            1&nbsp;minuto.
           </p>
+
+          {/* Phones: two quick facts */}
+          <ul className="mt-5 flex flex-wrap justify-center gap-2 md:hidden">
+            <li className="caps inline-flex items-center gap-1.5 rounded-full border-2 border-ink/15 px-3 py-1 text-xs">
+              <Wallet className="h-3.5 w-3.5" aria-hidden="true" /> Pagas no fim
+            </li>
+            <li className="caps inline-flex items-center gap-1.5 rounded-full border-2 border-ink/15 px-3 py-1 text-xs">
+              <Star className="h-3.5 w-3.5 fill-yellow" aria-hidden="true" /> {STAMPS_TO_FREE + 1}.º corte grátis
+            </li>
+          </ul>
 
           {/* Same width as the tagline (an invisible copy of it sizes this
               column), centred under "Barbershop" */}

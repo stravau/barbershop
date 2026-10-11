@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import { logout } from "@/app/conta/actions"
 import { ConfirmDialog } from "@/components/ConfirmDialog"
+import { SESSION_ENDED_EVENT } from "@/lib/nav-events"
 
 /**
  * "Terminar sessão" that asks first. The button only opens the pop-up (a
@@ -37,6 +38,8 @@ export function LogoutButton({
         onConfirm={() => {
           setAsking(false)
           onLoggedOut?.()
+          // The home page keeps its state when the sign-out lands back on it
+          window.dispatchEvent(new Event(SESSION_ENDED_EVENT))
           formRef.current?.requestSubmit()
         }}
       >

@@ -8,6 +8,7 @@ import { ExpressSlot } from "@/components/ExpressSlot"
 import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
 import type { AccountSummary } from "@/app/api/conta/resumo/route"
+import { SESSION_ENDED_EVENT } from "@/lib/nav-events"
 
 // The home page stays static for everyone; a signed-in client's bits are
 // fetched in the browser and filled in once they arrive.
@@ -20,6 +21,10 @@ export function AccountSummaryProvider({ children }: { children: React.ReactNode
       .then((r) => r.json())
       .then(setSummary)
       .catch(() => setSummary({ signedIn: false }))
+    // Signed out from the header/menu while on this page: drop their bits now
+    const ended = () => setSummary({ signedIn: false })
+    window.addEventListener(SESSION_ENDED_EVENT, ended)
+    return () => window.removeEventListener(SESSION_ENDED_EVENT, ended)
   }, [])
   return <Ctx.Provider value={summary}>{children}</Ctx.Provider>
 }
