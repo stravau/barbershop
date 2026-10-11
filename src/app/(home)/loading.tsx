@@ -1,7 +1,7 @@
 /**
- * While a page loads (the home page on a first visit, and other pages
- * without their own loading state): a skeleton in the shape of the home
- * hero, on the same rays, so the real page drops into place.
+ * While the home page loads (e.g. a first visit): a skeleton in the shape of
+ * its hero, on the same rays, so the real page drops into place. Kept in the
+ * (home) group so other sections don't get it (each has its own).
  */
 export default function Loading() {
   const block = "rounded-md bg-ink/10"
