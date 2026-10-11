@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { Wordmark } from "@/components/Wordmark"
 import { STAMPS_TO_FREE } from "@/lib/loyalty"
 import { useStamps } from "./AccountSummary"
@@ -8,7 +9,21 @@ const TILT = ["-rotate-12", "rotate-6", "-rotate-3", "rotate-12", "-rotate-6", "
 
 /** The home page's loyalty card: an example, or the signed-in client's own stamps. */
 export function StampCard() {
-  const { stamped, own } = useStamps(3)
+  return (
+    <Suspense fallback={<Card stamped={EXAMPLE_STAMPS} own={false} />}>
+      <OwnStampCard />
+    </Suspense>
+  )
+}
+
+const EXAMPLE_STAMPS = 3
+
+function OwnStampCard() {
+  const { stamped, own } = useStamps(EXAMPLE_STAMPS)
+  return <Card stamped={stamped} own={own} />
+}
+
+function Card({ stamped, own }: { stamped: number; own: boolean }) {
 
   return (
     <div className="mx-auto w-full max-w-[400px] rotate-2 overflow-hidden rounded-xl border-2 border-ink bg-card shadow-[6px_6px_0_var(--ink)]">

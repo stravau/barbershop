@@ -1,43 +1,57 @@
 "use client"
 
 import { STAMPS_TO_FREE } from "@/lib/loyalty"
-import { createContext, useContext, useEffect, useState } from "react"
+import { Suspense, createContext, use, useContext, useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowRight, CalendarCheck, Zap } from "lucide-react"
 import { ExpressSlot } from "@/components/ExpressSlot"
 import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
-import type { AccountSummary } from "@/app/api/conta/resumo/route"
+import type { AccountSummary } from "@/lib/account-summary"
 import type { FreeSlot } from "@/lib/next-slot"
 import { SESSION_ENDED_EVENT } from "@/lib/nav-events"
 
-// The home page stays static for everyone; a signed-in client's bits are
-// fetched in the browser and filled in once they arrive.
-const Ctx = createContext<AccountSummary | null>(null)
+// A signed-in client's bits are read on the server while the page renders
+// and streamed with it (a promise from page.tsx), so they're in the HTML
+// rather than fetched by the browser afterwards. The parts that use them sit
+// in Suspense boundaries, so the rest of the page doesn't wait.
+const Ctx = createContext<{ summary: Promise<AccountSummary>; ended: boolean } | null>(null)
 
-export function AccountSummaryProvider({ children }: { children: React.ReactNode }) {
-  const [summary, setSummary] = useState<AccountSummary | null>(null)
+export function AccountSummaryProvider({
+  summary,
+  children,
+}: {
+  summary: Promise<AccountSummary>
+  children: React.ReactNode
+}) {
+  const [ended, setEnded] = useState(false)
+  // Signed out from the header/menu while on this page: drop their bits now
   useEffect(() => {
-    fetch("/api/conta/resumo", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(setSummary)
-      .catch(() => setSummary({ signedIn: false }))
-    // Signed out from the header/menu while on this page: drop their bits now
-    const ended = () => setSummary({ signedIn: false })
-    window.addEventListener(SESSION_ENDED_EVENT, ended)
-    return () => window.removeEventListener(SESSION_ENDED_EVENT, ended)
+    const onEnded = () => setEnded(true)
+    window.addEventListener(SESSION_ENDED_EVENT, onEnded)
+    return () => window.removeEventListener(SESSION_ENDED_EVENT, onEnded)
   }, [])
-  return <Ctx.Provider value={summary}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ summary, ended }}>{children}</Ctx.Provider>
 }
 
+/** The signed-in client's summary, or null (suspends until it has arrived). */
 const useSignedIn = () => {
-  const s = useContext(Ctx)
-  return s?.signedIn ? s : null
+  const ctx = useContext(Ctx)
+  const s = ctx ? use(ctx.summary) : null
+  return s?.signedIn && !ctx?.ended ? s : null
 }
 
 
 /** Full-width bar right under the header with the client's next booking. */
 export function NextBookingBar() {
+  return (
+    <Suspense fallback={null}>
+      <NextBookingBarInner />
+    </Suspense>
+  )
+}
+
+function NextBookingBarInner() {
   const next = useSignedIn()?.next
   if (!next) return null
 
@@ -81,13 +95,24 @@ export function NextBookingBar() {
  * their usual booking at the next free times right under it (one tap each).
  */
 export function HeroCta({ nextSlot }: { nextSlot: FreeSlot | null }) {
-  const s = useSignedIn()
-  const express = s?.express
   return (
     <>
       <Link id="hero-cta" href="/marcar" className="btn h-14 w-full text-lg">
         Marcar corte <ArrowRight className="h-5 w-5" />
       </Link>
+      <Suspense fallback={null}>
+        <HeroExtras nextSlot={nextSlot} />
+      </Suspense>
+    </>
+  )
+}
+
+/** Under the button: the express booking for clients with a history, else the next free slot. */
+function HeroExtras({ nextSlot }: { nextSlot: FreeSlot | null }) {
+  const s = useSignedIn()
+  const express = s?.express
+  return (
+    <>
       {/* Once we know who's here: everyone without express times gets the next free slot */}
       {nextSlot && !express?.slots.length && <NextFreeSlot slot={nextSlot} />}
       {/* contain:inline-size — the boxes take the button's width instead of widening the hero column */}

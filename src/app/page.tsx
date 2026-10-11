@@ -9,6 +9,8 @@ import { ReelsPhone, ReelsRow } from "@/components/home/ReelsShowcase"
 import { REELS } from "@/lib/reels"
 import { STAMPS_TO_FREE } from "@/lib/loyalty"
 import { nextFreeCut, type FreeSlot } from "@/lib/next-slot"
+import { getAccountSummary, type AccountSummary } from "@/lib/account-summary"
+import { unstable_cache } from "next/cache"
 import { PriceBoard } from "@/components/PriceBoard"
 import { LOCATIONS, groupedWeeklyHours } from "@/lib/schedule"
 import { getServiceItem, formatPriceShort } from "@/lib/services"
@@ -17,15 +19,17 @@ import { barbershopJsonLd } from "@/lib/structured-data"
 
 const TAGLINE = "Corte, barba e sobrancelha."
 
-// Static, rebuilt at most once a minute: keeps "Próxima vaga" fresh while the
-// page loads instantly (the slot needs at least an hour's notice anyway)
-export const revalidate = 60
+// "Próxima vaga" is the same for everyone: worked out at most once a minute
+// (a slot needs at least an hour's notice anyway)
+const cachedNextFreeCut = unstable_cache(() => nextFreeCut(), ["home-next-free-cut"], { revalidate: 60 })
 
 export default async function HomePage() {
   // The page must still render if the agenda can't be read
-  const nextSlot = await nextFreeCut().catch(() => null)
+  const nextSlot = await cachedNextFreeCut().catch(() => null)
+  // Not awaited: streamed to the parts that show the client's bits
+  const summary = getAccountSummary().catch((): AccountSummary => ({ signedIn: false }))
   return (
-    <AccountSummaryProvider>
+    <AccountSummaryProvider summary={summary}>
       <main>
         {/* Hours, prices and links for search engines */}
         <script
