@@ -1,6 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, Star, Wallet } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { InstagramIcon } from "@/components/InstagramIcon"
 import { NextBookingBar, AccountSummaryProvider, HeroCta } from "@/components/home/AccountSummary"
 import { StampCard } from "@/components/home/StampCard"
@@ -102,11 +102,11 @@ function Hero() {
             </span>
             {/* Phones: two quick facts, as blocks the button's width */}
             <ul className="mb-3 grid w-full grid-cols-2 gap-2 [contain:inline-size] md:hidden">
-              <li className="caps flex items-center justify-center gap-1.5 rounded-md border-2 border-ink bg-paper px-2 py-1.5 text-xs shadow-[2px_2px_0_var(--ink)]">
-                <Wallet className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Pagas no fim
+              <li className="caps rounded-md border-2 border-ink bg-paper px-2 py-1.5 text-center text-xs shadow-[2px_2px_0_var(--ink)]">
+                Pagas no fim
               </li>
-              <li className="caps flex items-center justify-center gap-1.5 rounded-md border-2 border-ink bg-yellow px-2 py-1.5 text-xs shadow-[2px_2px_0_var(--ink)]">
-                <Star className="h-3.5 w-3.5 shrink-0 fill-ink" aria-hidden="true" /> {STAMPS_TO_FREE + 1}.º corte grátis
+              <li className="caps rounded-md border-2 border-ink bg-paper px-2 py-1.5 text-center text-xs shadow-[2px_2px_0_var(--ink)]">
+                {STAMPS_TO_FREE + 1}.º corte grátis
               </li>
             </ul>
             <HeroCta />
