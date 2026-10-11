@@ -5,8 +5,8 @@ import { combineDateTimeLisbon, formatLisbon } from "@/lib/tz"
 const times = (slots: Date[]) => slots.map((s) => formatLisbon(s, "HH:mm"))
 const lisbon = (ymd: string, hhmm: string) => combineDateTimeLisbon(ymd, hhmm)
 
-// 2026-10-12 is a Monday (Setúbal 08:00–08:30, 10:00–10:30 and 13:30–21:00,
-// around classes); 2026-10-14 a Wednesday; 2026-10-16 a Friday; 2026-10-18 a Sunday
+// 2026-10-12 is a Monday (Setúbal 08:00–08:30 and 13:30–21:00, around
+// classes); 2026-10-14 a Wednesday; 2026-10-16 a Friday; 2026-10-17 a Saturday
 test.describe("generateSlots", () => {
   test("a free Monday in Setúbal: a 45-min cut fits only the afternoon period, up to 21:00", () => {
     const slots = times(generateSlots({ isoDate: "2026-10-12", location: "setubal", durationMin: 45, busy: [] }))
@@ -17,8 +17,8 @@ test.describe("generateSlots", () => {
 
   test("short gaps between classes still take short services", () => {
     const slots = times(generateSlots({ isoDate: "2026-10-12", location: "setubal", durationMin: 10, busy: [] }))
-    expect(slots.slice(0, 4)).toEqual(["08:00", "08:15", "10:00", "10:15"])
-    expect(slots).not.toContain("09:00") // class 08:30–10:00
+    expect(slots.slice(0, 3)).toEqual(["08:00", "08:15", "13:30"])
+    expect(slots).not.toContain("10:00") // class 08:30–10:00, then a gap left out
   })
 
   test("no slot during a class (Wednesday 14:00–18:30)", () => {
@@ -42,16 +42,16 @@ test.describe("generateSlots", () => {
     expect(generateSlots({ isoDate: "2026-10-12", location: "lisboa", durationMin: 45, busy: [] })).toEqual([])
   })
 
-  test("Friday: Setúbal only between classes, Lisboa from 17:00 (travel time)", () => {
-    const setubal = times(generateSlots({ isoDate: "2026-10-16", location: "setubal", durationMin: 45, busy: [] }))
+  test("Friday: no Setúbal, Lisboa from 17:00", () => {
+    const setubal = generateSlots({ isoDate: "2026-10-16", location: "setubal", durationMin: 45, busy: [] })
     const lisboa = times(generateSlots({ isoDate: "2026-10-16", location: "lisboa", durationMin: 45, busy: [] }))
-    expect(setubal).toEqual(["08:00", "08:15", "12:30", "12:45"])
+    expect(setubal).toEqual([])
     expect(lisboa[0]).toBe("17:00")
   })
 
   test("a service longer than the opening hours has no slot", () => {
-    // Friday Setúbal's longest period is one hour: a 75-min job doesn't fit
-    expect(generateSlots({ isoDate: "2026-10-16", location: "setubal", durationMin: 75, busy: [] })).toEqual([])
+    // Saturday in Lisboa is 2h30: a 160-min job doesn't fit
+    expect(generateSlots({ isoDate: "2026-10-17", location: "lisboa", durationMin: 160, busy: [] })).toEqual([])
   })
 
   test("summer and winter time: 13:30 in Lisbon is 12:30 or 13:30 UTC", () => {

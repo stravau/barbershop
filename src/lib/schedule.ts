@@ -25,19 +25,16 @@ type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6 // 0 = Sunday
  * Weekly schedule per location, in Europe/Lisbon local time: the periods a
  * day is open for bookings, in order. Days not listed = closed.
  *
- * Setúbal (weekdays) is the free time around the barber's classes this
- * semester, within 08:00–21:00. Classes: Mon 08:30–10:00 and 10:30–13:30;
- * Tue 08:30–11:30; Wed 14:00–18:30; Thu 11:30–13:00; Fri 09:00–10:30,
- * 11:00–12:30 and 13:30–15:00.
+ * Setúbal (Mon–Thu) is the free time around the barber's classes this
+ * semester, within 08:00–21:00 (some short gaps left out on purpose).
+ * Fridays are Lisboa only.
  */
 export const SCHEDULE: Record<LocationId, Partial<Record<DayOfWeek, WorkingHours[]>>> = {
   setubal: {
-    1: [h("08:00", "08:30"), h("10:00", "10:30"), h("13:30", "21:00")], // Mon
-    2: [h("08:00", "08:30"), h("11:30", "21:00")], // Tue
+    1: [h("08:00", "08:30"), h("13:30", "21:00")], // Mon
+    2: [h("11:30", "21:00")], // Tue
     3: [h("08:00", "14:00"), h("18:30", "21:00")], // Wed
     4: [h("08:00", "11:30"), h("13:00", "21:00")], // Thu
-    // Fri: travels to Lisboa after the last class (see FRIDAY_TRAVEL_BLOCK)
-    5: [h("08:00", "09:00"), h("10:30", "11:00"), h("12:30", "13:30")],
   },
   lisboa: {
     // Friday starts 17:00 (NOT 16:30) — travel buffer for Setúbal->Lisboa drive on Friday afternoons.

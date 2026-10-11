@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
-import { Zap } from "lucide-react"
+import { ArrowRight, Zap } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import { requireClient } from "@/lib/client-auth"
 import { clientHabit, suggestSlots } from "@/lib/express"
@@ -55,22 +55,33 @@ export default async function ContaPage({ searchParams }: PageProps) {
   )
 }
 
-function ExpressSkeleton() {
+/** The express card's frame: a black band with the title on top. */
+function ExpressFrame({ children }: { children: React.ReactNode }) {
   return (
-    <Card>
-      <h2 className="flex items-center gap-2 text-2xl sm:text-3xl">
+    <section className="overflow-hidden rounded-lg border-2 border-ink bg-card shadow-[6px_6px_0_var(--ink)]">
+      <h2 className="flex items-center gap-2.5 border-b-2 border-ink bg-ink px-5 py-3.5 text-2xl text-yellow sm:px-6 sm:text-3xl">
         <Zap className="h-6 w-6 fill-yellow" aria-hidden="true" />
         Marcação express
       </h2>
-      <div className="mt-4 animate-pulse space-y-3 motion-reduce:animate-none" aria-label="A procurar horas livres">
-        <div className="h-4 w-2/3 rounded bg-paper-dark" />
-        <div className="grid gap-3 sm:grid-cols-2">
+      {children}
+    </section>
+  )
+}
+
+function ExpressSkeleton() {
+  return (
+    <ExpressFrame>
+      <div className="animate-pulse motion-reduce:animate-none" aria-label="A procurar horas livres">
+        <div className="border-b-2 border-dashed border-ink/20 bg-paper-dark/50 px-5 py-3 sm:px-6">
+          <div className="h-4 w-3/4 rounded bg-ink/10" />
+        </div>
+        <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-12 rounded-md border-2 border-ink/15 bg-paper-dark/60" />
+            <div key={i} className="h-[70px] rounded-md border-2 border-ink/15 bg-ink/5" />
           ))}
         </div>
       </div>
-    </Card>
+    </ExpressFrame>
   )
 }
 
@@ -87,61 +98,76 @@ async function ExpressCard({
   const habit = await clientHabit(clientId, preferredLocation)
   const suggestions = habit ? await suggestSlots(habit) : []
 
+  const city = habit?.location === "lisboa" ? "Lisboa" : "Setúbal"
+
   return (
-      <Card>
-        <h2 className="flex items-center gap-2 text-2xl sm:text-3xl">
-          <Zap className="h-6 w-6 fill-yellow" aria-hidden="true" />
-          Marcação express
-        </h2>
-        {habit ? (
-          <>
-            <p className="mt-3 text-ink/80">
-              O costume: <strong>{habit.serviceName}</strong> · {formatPrice(habit.priceEur)} ·{" "}
-              {habit.location === "lisboa" ? "Lisboa" : "Setúbal"}
-              {habit.weekday !== null && <>, normalmente à {WEEKDAYS[habit.weekday]}</>}.
-            </p>
+    <ExpressFrame>
+      {habit ? (
+        <>
+          {/* The usual booking, read like a receipt line (not buttons) */}
+          <p className="border-b-2 border-dashed border-ink/20 bg-paper-dark/50 px-5 py-3 text-sm sm:px-6">
+            <span className="caps mr-2 text-xs text-muted">O teu costume</span>
+            <strong>{habit.serviceName}</strong> · {formatPrice(habit.priceEur)} · {city}
+            {habit.weekday !== null && (
+              <span className="text-ink/70">
+                {" "}
+                · normalmente {habit.weekday === 0 || habit.weekday === 6 ? "ao" : "à"} {WEEKDAYS[habit.weekday]}
+              </span>
+            )}
+          </p>
+          <div className="p-5 sm:p-6">
             {hasUpcoming && (
-              <p className="mt-2 text-sm text-muted">
+              <p className="mb-4 text-sm text-ink/80">
                 Já tens uma marcação agendada.{" "}
-                <Link href="/conta/marcacoes" className="link">
+                <Link href="/conta/marcacoes" className="link font-semibold">
                   Ver marcação
                 </Link>
               </p>
             )}
             {suggestions.length > 0 ? (
-              <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                {suggestions.map((s) => (
-                  <li key={s.startIso}>
-                    <ExpressSlot
-                      variant="wide"
-                      startIso={s.startIso}
-                      day={formatLisbon(new Date(s.startIso), "EEEE, dd 'de' MMMM").replace("-feira", "")}
-                      time={formatLisbon(new Date(s.startIso), "HH:mm")}
-                      serviceName={habit.serviceName}
-                      priceEur={habit.priceEur}
-                      city={habit.location === "lisboa" ? "Lisboa" : "Setúbal"}
-                    />
-                  </li>
-                ))}
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {suggestions.map((s) => {
+                  const d = new Date(s.startIso)
+                  return (
+                    <li key={s.startIso}>
+                      <ExpressSlot
+                        variant="wide"
+                        startIso={s.startIso}
+                        day={formatLisbon(d, "EEEE, dd 'de' MMMM").replace("-feira", "")}
+                        weekday={formatLisbon(d, "EEEE").replace("-feira", "")}
+                        date={formatLisbon(d, "d MMM").toLowerCase().replace(".", "")}
+                        time={formatLisbon(d, "HH:mm")}
+                        serviceName={habit.serviceName}
+                        priceEur={habit.priceEur}
+                        city={city}
+                      />
+                    </li>
+                  )
+                })}
               </ul>
             ) : (
-              <p className="mt-5 text-ink/80">Não há horários livres nas próximas 3 semanas.</p>
+              <p className="text-ink/80">Não há horas livres para o teu costume nas próximas 3 semanas.</p>
             )}
-            <p className="mt-4 text-xs text-muted">
-              Escolhe uma hora e confirma. Fica pendente até ser confirmada e, nessa altura,
-              recebes um email com a morada.
-            </p>
-          </>
-        ) : (
-          <p className="mt-3 text-ink/80">
-            Depois da primeira visita, aparecem aqui sugestões com o teu serviço e horário
-            habituais, para marcares com um toque.
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t-2 border-dashed border-ink/20 px-5 py-3.5 sm:px-6">
+            <p className="text-xs text-muted">Escolhe uma hora e confirma. Recebes a morada por email quando for confirmada.</p>
+            <Link href="/marcar" className="link inline-flex items-center gap-1 text-sm font-semibold">
+              Outro serviço ou hora <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </>
+      ) : (
+        <div className="p-5 sm:p-6">
+          <p className="text-ink/80">
+            Depois da tua primeira marcação, aparecem aqui o teu serviço e as tuas horas habituais
+            para marcares com um toque.
           </p>
-        )}
-        <Link href="/marcar" className="btn-ghost px-3 py-1.5 text-sm mt-5">
-          {habit ? "Outro serviço ou horário" : "Fazer uma marcação"}
-        </Link>
-      </Card>
+          <Link href="/marcar" className="btn btn-sm mt-4">
+            Fazer uma marcação <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
+      )}
+    </ExpressFrame>
   )
 }
 
