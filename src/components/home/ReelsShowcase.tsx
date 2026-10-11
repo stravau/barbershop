@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Play } from "lucide-react"
 import type { Reel } from "@/lib/reels"
+import { cn } from "@/lib/utils"
 import { StoryPlayer, useReducedMotion } from "./StoryPlayer"
 
 /**
@@ -105,7 +106,11 @@ export function ReelsRow({ reels }: { reels: readonly Reel[] }) {
             ref={(el) => {
               items.current[i] = el
             }}
-            className="w-[64vw] max-w-[260px] shrink-0 snap-center"
+            className={cn(
+              "w-[64vw] max-w-[260px] shrink-0 snap-center transition duration-300 motion-reduce:transition-none",
+              // The card in view sits straight, the others tilt a little
+              current === i ? "rotate-0 scale-100" : i % 2 ? "scale-[0.96] rotate-2" : "scale-[0.96] -rotate-2",
+            )}
           >
             <button
               type="button"

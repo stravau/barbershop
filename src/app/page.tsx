@@ -4,6 +4,8 @@ import { ArrowRight } from "lucide-react"
 import { InstagramIcon } from "@/components/InstagramIcon"
 import { NextBookingBar, AccountSummaryProvider, HeroCta } from "@/components/home/AccountSummary"
 import { StampCard } from "@/components/home/StampCard"
+import { HeroIntro } from "@/components/home/HeroIntro"
+import { StickyCta } from "@/components/home/StickyCta"
 import { ReelsPhone, ReelsRow } from "@/components/home/ReelsShowcase"
 import { REELS } from "@/lib/reels"
 import { STAMPS_TO_FREE } from "@/lib/loyalty"
@@ -31,6 +33,8 @@ export default function HomePage() {
           <NextBookingBar />
           <Hero />
         </div>
+        <HeroIntro />
+        <StickyCta />
         <InstagramReels />
         <PricesAndHowItWorks />
         <Timetable />
@@ -76,39 +80,32 @@ function Hero() {
           {/* Phones: the "Corte 10 €" sticker sits in the free corner beside "Barbershop" */}
           <div className="relative">
           <h1 className="inline-flex flex-col items-center text-[clamp(3.5rem,11vw,7.25rem)] leading-[0.9] max-[380px]:text-[calc((100vw-2rem)/5.7)] md:group-has-[[data-express]]/hero:text-[clamp(3.5rem,min(11vw,calc(27.5vh-5.15rem)),7.25rem)]">
-            <span className="print-shadow">TARZAN&apos;S</span>
-            <span className="font-script mt-[0.02em] -rotate-2 text-[0.66em] leading-none text-jungle">
+            <span className="print-shadow hero-anim">TARZAN&apos;S</span>
+            <span className="font-script hero-anim mt-[0.02em] -rotate-2 text-[0.66em] leading-none text-jungle [--d:.12s]">
               Barbershop
             </span>
           </h1>
-          {cut && <CutPrice price={cut.priceEur} small className="-right-1 -bottom-5 md:hidden" />}
+          {cut && <CutPrice price={cut.priceEur} small className="sticker-anim -right-1 -bottom-5 [--d:.6s] md:hidden" />}
           </div>
 
-          <p className="font-display mt-9 text-2xl max-[400px]:text-[calc((100vw-2rem)/14.8)] sm:text-3xl md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">{TAGLINE}</p>
-          <p className="mt-4 max-w-md text-lg leading-relaxed text-ink/80 md:group-has-[[data-express]]/hero:mt-[clamp(0.5rem,1.5vh,1rem)]">
-            Em Setúbal durante a semana e em Lisboa à sexta e ao sábado.
-            Escolhe o serviço, o dia e a hora. Faz a tua marcação em menos de
-            1&nbsp;minuto.
+          <p className="font-display hero-anim mt-9 text-2xl [--d:.22s] max-[400px]:text-[calc((100vw-2rem)/14.8)] sm:text-3xl md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">{TAGLINE}</p>
+          <p className="hero-anim mt-4 max-w-md text-lg leading-relaxed text-ink/80 [--d:.3s] md:group-has-[[data-express]]/hero:mt-[clamp(0.5rem,1.5vh,1rem)]">
+            Setúbal durante a semana, Lisboa à sexta e ao sábado.
+            Marca em menos de 1&nbsp;minuto.
           </p>
+
+          {/* Phones: a strip running across the screen with the quick facts */}
+          <Marquee items={["Pagas no fim", `${STAMPS_TO_FREE + 1}.º corte grátis`, "Setúbal e Lisboa", cut ? `Corte a ${formatPriceShort(cut.priceEur)}` : null]} />
 
           {/* Same width as the tagline (an invisible copy of it sizes this
               column), centred under "Barbershop" */}
-          <div className="mt-9 grid w-max max-w-full justify-items-center md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">
+          <div className="hero-anim mt-9 grid w-max max-w-full justify-items-center [--d:.42s] md:group-has-[[data-express]]/hero:mt-[clamp(0.75rem,3vh,2.25rem)]">
             <span
               aria-hidden="true"
               className="font-display invisible h-0 overflow-hidden whitespace-nowrap text-2xl max-[400px]:text-[calc((100vw-2rem)/14.8)] sm:text-3xl"
             >
               {TAGLINE}
             </span>
-            {/* Phones: two quick facts, as blocks the button's width */}
-            <ul className="mb-3 grid w-full grid-cols-2 gap-2 [contain:inline-size] md:hidden">
-              <li className="caps rounded-md border-2 border-ink bg-paper px-2 py-1.5 text-center text-xs shadow-[2px_2px_0_var(--ink)]">
-                Pagas no fim
-              </li>
-              <li className="caps rounded-md border-2 border-ink bg-paper px-2 py-1.5 text-center text-xs shadow-[2px_2px_0_var(--ink)]">
-                {STAMPS_TO_FREE + 1}.º corte grátis
-              </li>
-            </ul>
             <HeroCta />
             <Link href="#precos" className="link mt-4 font-semibold md:group-has-[[data-express]]/hero:mt-[clamp(0.5rem,1.5vh,1rem)]">
               Ver preços
@@ -117,17 +114,45 @@ function Hero() {
         </div>
 
         {/* From md up: a phone playing the Instagram videos */}
-        <div className="relative mx-auto hidden w-fit md:block">
+        <div className="hero-anim relative mx-auto hidden w-fit [--d:.2s] md:block">
           <ReelsPhone
             reels={REELS}
             // As tall as the first screen allows (the hero fits it from md up)
             className="w-[min(300px,calc((100svh-210px)*0.5))] min-w-[230px] md:group-has-[[data-express]]/hero:w-[min(280px,calc((100svh-330px)*0.5))]"
           />
-          {cut && <CutPrice price={cut.priceEur} className="-top-10 -right-20" />}
+          {cut && <CutPrice price={cut.priceEur} className="sticker-anim -top-10 -right-20 [--d:.6s]" />}
         </div>
 
       </div>
     </section>
+  )
+}
+
+/**
+ * Phones: a dark strip, slightly tilted, running across the screen with the
+ * quick facts (two copies of the list slide left for a seamless loop).
+ */
+function Marquee({ items }: { items: (string | null)[] }) {
+  const list = items.filter((i): i is string => !!i)
+  return (
+    // contain:inline-size keeps the full-width strip from widening the hero
+    // column; the strip itself is centred on the screen and runs edge to edge
+    <div className="hero-anim mt-7 w-full [--d:.36s] [contain:inline-size] md:hidden" aria-label={list.join(", ")}>
+      <div className="relative left-1/2 w-screen -translate-x-1/2 -rotate-2 overflow-hidden border-y-2 border-ink bg-ink py-2 text-paper">
+      <div className="flex w-max animate-[marquee_20s_linear_infinite] motion-reduce:animate-none">
+        {[0, 1].map((copy) => (
+          <span key={copy} aria-hidden="true" className="caps flex shrink-0 items-center gap-4 pr-4 text-sm">
+            {list.map((item) => (
+              <span key={item} className="flex items-center gap-4">
+                {item}
+                <span className="text-yellow">★</span>
+              </span>
+            ))}
+          </span>
+        ))}
+      </div>
+      </div>
+    </div>
   )
 }
 

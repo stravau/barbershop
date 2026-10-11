@@ -43,8 +43,18 @@ export default function RootLayout({
   return (
     <html
       lang="pt-PT"
+      // data-hero-seen may be set by the script below before React hydrates
+      suppressHydrationWarning
       className={`${slab.variable} ${archivo.variable} ${yellowtail.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          // The home hero's entrance plays once per visit (components/home/HeroIntro.tsx)
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem("tarzans-hero-seen"))document.documentElement.dataset.heroSeen="1"}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         {/* useSearchParams inside needs a Suspense boundary */}
         <Suspense fallback={null}>

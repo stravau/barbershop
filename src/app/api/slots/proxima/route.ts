@@ -11,7 +11,7 @@ const LOCATIONS: LocationId[] = ["setubal", "lisboa"]
 /**
  * GET /api/slots/proxima — the next free time for a cut, in either city, for
  * the home page ("Próxima vaga: hoje às 16:00 em Setúbal").
- * { slot: { startIso, location, label } } or { slot: null }.
+ * { slot: { startIso, location, when, time, city, label } } or { slot: null }.
  */
 export async function GET() {
   const now = new Date()
@@ -42,12 +42,17 @@ export async function GET() {
       : day === ymdPlusDays(today, 1)
         ? "amanhã"
         : formatLisbon(best.start, "EEEE, dd/MM").replace("-feira", "").toLowerCase()
+  const time = formatLisbon(best.start, "HH:mm")
+  const city = best.location === "lisboa" ? "Lisboa" : "Setúbal"
   return NextResponse.json(
     {
       slot: {
         startIso: best.start.toISOString(),
         location: best.location,
-        label: `${when} às ${formatLisbon(best.start, "HH:mm")} em ${best.location === "lisboa" ? "Lisboa" : "Setúbal"}`,
+        when,
+        time,
+        city,
+        label: `${when} às ${time} em ${city}`,
       },
     },
     { headers: { "Cache-Control": "no-store" } },

@@ -85,7 +85,7 @@ export function HeroCta() {
   const express = s?.express
   return (
     <>
-      <Link href="/marcar" className="btn h-14 w-full text-lg">
+      <Link id="hero-cta" href="/marcar" className="btn h-14 w-full text-lg">
         Marcar corte <ArrowRight className="h-5 w-5" />
       </Link>
       {/* Once we know who's here: everyone without express times gets the next free slot */}
@@ -110,27 +110,44 @@ export function HeroCta() {
 }
 
 /** Phones: "Próxima vaga: hoje às 16:00 em Setúbal" under the main button. */
+type FreeSlot = { when: string; time: string; city: string; label: string }
+
 function NextFreeSlot() {
-  const [label, setLabel] = useState<string | null>(null)
+  const [slot, setSlot] = useState<FreeSlot | null>(null)
   useEffect(() => {
     fetch("/api/slots/proxima", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d: { slot: { label: string } | null }) => setLabel(d.slot?.label ?? null))
+      .then((d: { slot: FreeSlot | null }) => setSlot(d.slot))
       .catch(() => {})
   }, [])
-  if (!label) return null
+  if (!slot) return null
   return (
-    // A green block like the next-booking bar. contain:inline-size: takes the
-    // button's width instead of widening the column on narrow phones
+    // A ticket: "Próxima vaga" with a live dot on the stub, the time big on the
+    // right, a dashed tear line with notches between. contain:inline-size:
+    // takes the button's width instead of widening the column.
     <Link
       href="/marcar?servicos=corte"
-      className="mt-3 flex w-full items-center justify-between gap-3 rounded-md border-2 border-ink bg-jungle px-3 py-2 text-left text-paper shadow-[3px_3px_0_var(--ink)] [contain:inline-size] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_var(--ink)] md:hidden"
+      aria-label={`Próxima vaga: ${slot.label}. Marcar`}
+      className="relative mt-3 flex w-full items-stretch rounded-md border-2 border-ink bg-jungle text-left text-paper shadow-[3px_3px_0_var(--ink)] transition [contain:inline-size] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_var(--ink)] md:hidden"
     >
-      <span className="min-w-0">
-        <span className="caps block text-[0.65rem] text-yellow">Próxima vaga</span>
-        <span className="block text-sm font-semibold">{label}</span>
+      <span className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2.5">
+        <span className="caps flex items-center gap-2 text-[0.7rem] text-yellow">
+          <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7ee08a] opacity-75 motion-reduce:animate-none" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#7ee08a]" />
+          </span>
+          Próxima vaga
+        </span>
+        <span className="text-sm font-semibold first-letter:uppercase">
+          {slot.when} · {slot.city}
+        </span>
       </span>
-      <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+      {/* Tear line with a notch at each end */}
+      <span aria-hidden="true" className="relative w-0 border-l-2 border-dashed border-paper/40">
+        <span className="absolute -top-[9px] -left-[8px] h-3.5 w-3.5 rounded-full border-2 border-ink bg-paper [clip-path:inset(50%_0_0_0)]" />
+        <span className="absolute -bottom-[9px] -left-[8px] h-3.5 w-3.5 rounded-full border-2 border-ink bg-paper [clip-path:inset(0_0_50%_0)]" />
+      </span>
+      <span className="font-display flex items-center px-4 text-3xl tabular-nums">{slot.time}</span>
     </Link>
   )
 }
