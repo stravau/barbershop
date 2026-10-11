@@ -279,7 +279,14 @@ function Timetable() {
                 {groupedWeeklyHours(loc.id).map((g) => (
                   <li key={g.days} className="flex items-baseline justify-between gap-2">
                     <span className="caps text-sm text-paper/70">{g.days}</span>
-                    <span className="font-semibold">{g.hours}</span>
+                    {/* A day can have several periods: one per line */}
+                    <span className="text-right font-semibold">
+                      {g.hours.map((hh) => (
+                        <span key={hh} className="block">
+                          {hh}
+                        </span>
+                      ))}
+                    </span>
                   </li>
                 ))}
               </ul>

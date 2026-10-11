@@ -47,10 +47,25 @@ export function generateSlots(opts: GenerateSlotsOptions): Date[] {
   } = opts
 
   const dayOfWeek = getLisbonDayOfWeek(isoDate)
-  const hours = getWorkingHours(location, dayOfWeek)
-  if (!hours) return []
+  return getWorkingHours(location, dayOfWeek).flatMap((period) =>
+    periodSlots(isoDate, location, dayOfWeek, period.start, period.end, durationMin, busy, bufferMin, stepMin),
+  )
+}
 
-  let { start, end } = hours
+/** Slots inside one open period of the day (see generateSlots). */
+function periodSlots(
+  isoDate: string,
+  location: LocationId,
+  dayOfWeek: number,
+  periodStart: string,
+  periodEnd: string,
+  durationMin: number,
+  busy: BusyInterval[],
+  bufferMin: number,
+  stepMin: number,
+): Date[] {
+  let start = periodStart
+  let end = periodEnd
 
   // Friday cross-city travel safeguard
   if (dayOfWeek === 5) {

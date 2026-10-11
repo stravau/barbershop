@@ -22,23 +22,33 @@ export interface WorkingHours {
 type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6 // 0 = Sunday
 
 /**
- * Weekly schedule per location, in Europe/Lisbon local time.
- * Days not listed = closed.
+ * Weekly schedule per location, in Europe/Lisbon local time: the periods a
+ * day is open for bookings, in order. Days not listed = closed.
+ *
+ * Setúbal (weekdays) is the free time around the barber's classes this
+ * semester, within 08:00–21:00. Classes: Mon 08:30–10:00 and 10:30–13:30;
+ * Tue 08:30–11:30; Wed 14:00–18:30; Thu 11:30–13:00; Fri 09:00–10:30,
+ * 11:00–12:30 and 13:30–15:00.
  */
-export const SCHEDULE: Record<LocationId, Partial<Record<DayOfWeek, WorkingHours>>> = {
+export const SCHEDULE: Record<LocationId, Partial<Record<DayOfWeek, WorkingHours[]>>> = {
   setubal: {
-    1: { start: "12:00", end: "20:00" }, // Mon
-    2: { start: "12:00", end: "20:00" }, // Tue
-    3: { start: "15:00", end: "20:00" }, // Wed
-    4: { start: "10:00", end: "12:30" }, // Thu
-    5: { start: "14:00", end: "15:00" }, // Fri (short — travels to Lisboa after)
+    1: [h("08:00", "08:30"), h("10:00", "10:30"), h("13:30", "21:00")], // Mon
+    2: [h("08:00", "08:30"), h("11:30", "21:00")], // Tue
+    3: [h("08:00", "14:00"), h("18:30", "21:00")], // Wed
+    4: [h("08:00", "11:30"), h("13:00", "21:00")], // Thu
+    // Fri: travels to Lisboa after the last class (see FRIDAY_TRAVEL_BLOCK)
+    5: [h("08:00", "09:00"), h("10:30", "11:00"), h("12:30", "13:30")],
   },
   lisboa: {
     // Friday starts 17:00 (NOT 16:30) — travel buffer for Setúbal->Lisboa drive on Friday afternoons.
     // The 15:00-17:00 window is implicitly blocked on Fridays (see slots.ts FRIDAY_TRAVEL_BLOCK).
-    5: { start: "17:00", end: "20:00" }, // Fri
-    6: { start: "10:00", end: "12:30" }, // Sat
+    5: [h("17:00", "20:00")], // Fri
+    6: [h("10:00", "12:30")], // Sat
   },
+}
+
+function h(start: string, end: string): WorkingHours {
+  return { start, end }
 }
 
 /** How far ahead a booking can be made (days). */
@@ -54,11 +64,9 @@ export const FRIDAY_TRAVEL_BLOCK = {
   lisboaEarliestStart: "17:00",
 } as const
 
-export function getWorkingHours(
-  location: LocationId,
-  dayOfWeek: DayOfWeek,
-): WorkingHours | null {
-  return SCHEDULE[location][dayOfWeek] ?? null
+/** The day's open periods, in order (empty when closed). */
+export function getWorkingHours(location: LocationId, dayOfWeek: DayOfWeek): WorkingHours[] {
+  return SCHEDULE[location][dayOfWeek] ?? []
 }
 
 export function getLocation(id: string): Location | undefined {
@@ -70,7 +78,7 @@ export function isLocationOpenOn(
   location: LocationId,
   dayOfWeek: DayOfWeek,
 ): boolean {
-  return SCHEDULE[location][dayOfWeek] != null
+  return (SCHEDULE[location][dayOfWeek]?.length ?? 0) > 0
 }
 
 // ---------- display helpers ----------
@@ -90,19 +98,18 @@ export function formatHour(hhmm: string): string {
 export interface WeekDayHours {
   dow: DayOfWeek
   day: string
-  /** e.g. "12h–20h", or null when closed */
-  hours: string | null
+  /** e.g. ["8h–8h30", "13h30–21h"]; empty when closed */
+  hours: string[]
 }
 
 /** Opening hours for a location, Monday → Sunday (closed days included). */
 export function weeklyHours(location: LocationId): WeekDayHours[] {
   return WEEK.map((dow) => {
-    const wh = getWorkingHours(location, dow)
     return {
       dow,
       day: DAY_SHORT[dow],
       // word joiners keep "15h–20h" from wrapping at the dash
-      hours: wh ? `${formatHour(wh.start)}⁠–⁠${formatHour(wh.end)}` : null,
+      hours: getWorkingHours(location, dow).map((wh) => `${formatHour(wh.start)}⁠–⁠${formatHour(wh.end)}`),
     }
   })
 }
@@ -113,14 +120,15 @@ export function weeklyHours(location: LocationId): WeekDayHours[] {
  */
 export function groupedWeeklyHours(
   location: LocationId,
-): { days: string; hours: string }[] {
-  const groups: { first: string; last: string; hours: string }[] = []
+): { days: string; hours: string[] }[] {
+  const groups: { first: string; last: string; hours: string[] }[] = []
   let prevHours: string | null = null
   for (const d of weeklyHours(location)) {
+    const key = d.hours.join(" ")
     const last = groups[groups.length - 1]
-    if (d.hours && d.hours === prevHours) last.last = d.day
-    else if (d.hours) groups.push({ first: d.day, last: d.day, hours: d.hours })
-    prevHours = d.hours
+    if (key && key === prevHours) last.last = d.day
+    else if (key) groups.push({ first: d.day, last: d.day, hours: d.hours })
+    prevHours = key || null
   }
   return groups.map((g) => ({
     days: g.first === g.last ? g.first : `${g.first}–${g.last}`,

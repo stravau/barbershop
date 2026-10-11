@@ -14,12 +14,14 @@ export function barbershopJsonLd(): Record<string, unknown> {
   const phone = process.env.NEXT_PUBLIC_SHOP_PHONE
 
   const hours = LOCATIONS.flatMap((loc) =>
-    Object.entries(SCHEDULE[loc.id]).map(([dow, h]) => ({
-      "@type": "OpeningHoursSpecification",
-      dayOfWeek: `https://schema.org/${DAY_NAMES[Number(dow)]}`,
-      opens: h!.start,
-      closes: h!.end,
-    })),
+    Object.entries(SCHEDULE[loc.id]).flatMap(([dow, periods]) =>
+      (periods ?? []).map((h) => ({
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: `https://schema.org/${DAY_NAMES[Number(dow)]}`,
+        opens: h.start,
+        closes: h.end,
+      })),
+    ),
   )
 
   const offers = [

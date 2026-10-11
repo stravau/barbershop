@@ -52,7 +52,7 @@ export async function createManualBooking(
 
   const combo = buildCombo(services)
   // No time given: use the opening time of that city on that day
-  const hhmm = time || getWorkingHours(location, getLisbonDayOfWeek(date))?.start || "12:00"
+  const hhmm = time || getWorkingHours(location, getLisbonDayOfWeek(date))[0]?.start || "12:00"
   const startUtc = combineDateTimeLisbon(date, hhmm)
   const endUtc = addMinutes(startUtc, combo.durationMin)
 
