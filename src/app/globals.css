@@ -312,3 +312,23 @@ html[data-hero-seen] .sticker-anim {
     transform: translateX(-50%);
   }
 }
+
+/* Home hero: vintage poster rays behind the name. 24 rays in a slightly
+   darker cream, fading out towards the edges, turning very slowly. */
+.sunburst {
+  background: repeating-conic-gradient(from 0deg, var(--paper-dark) 0deg 7.5deg, transparent 7.5deg 15deg);
+  mask-image: radial-gradient(circle closest-side, black 18%, transparent 100%);
+  animation: sunburst-turn 240s linear infinite;
+}
+
+@keyframes sunburst-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sunburst {
+    animation: none;
+  }
+}
