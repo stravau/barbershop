@@ -31,7 +31,7 @@ type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6 // 0 = Sunday
  */
 export const SCHEDULE: Record<LocationId, Partial<Record<DayOfWeek, WorkingHours[]>>> = {
   setubal: {
-    1: [h("08:00", "08:30"), h("13:30", "21:00")], // Mon
+    1: [h("10:00", "15:30"), h("18:30", "21:00")], // Mon
     2: [h("11:30", "21:00")], // Tue
     3: [h("08:00", "14:00"), h("18:30", "21:00")], // Wed
     4: [h("08:00", "11:30"), h("13:00", "21:00")], // Thu
