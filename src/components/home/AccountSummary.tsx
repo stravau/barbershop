@@ -9,8 +9,9 @@ import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
 import type { AccountSummary } from "@/lib/account-summary"
 import type { FreeSlot } from "@/lib/next-slot"
-import { shortWhen, slotBookingHref } from "@/lib/booking-links"
+import { slotBookingHref } from "@/lib/booking-links"
 import { SESSION_ENDED_EVENT } from "@/lib/nav-events"
+import { SlotStub } from "./SlotStub"
 
 // A signed-in client's bits are read on the server while the page renders
 // and streamed with it (a promise from page.tsx), so they're in the HTML
@@ -172,39 +173,42 @@ function NextFreeSlot({ slot }: { slot: FreeSlot }) {
 type Express = NonNullable<Extract<AccountSummary, { signedIn: true }>["express"]>
 
 /**
- * "Marcação express": a button in the style of "Marcar corte" (same height,
- * a little narrower, centred under it) with the usual booking on it. A click
- * presses it in and slides the next free times open below.
+ * "Marcação express": a button in the style of "Marcar corte" (same height)
+ * with the usual booking on it. A click presses it in and slides the next
+ * free times open below. Beside it, a button of its own: the green stub with
+ * the next of those times, as in the sticky bar.
  */
 function ExpressBox({ express }: { express: Express }) {
   const [open, setOpen] = useState(false)
+  const first = express.slots[0]
   return (
-    <div data-express className="mt-4 w-11/12 [contain:inline-size]">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-controls="express-slots"
-        className={cn(
-          // Same shape as "Marcar corte", in the box's earlier colours (cream, yellow bolt)
-          "btn h-14 w-full gap-3 bg-paper px-4 py-0",
-          // Stays pressed in while the times are open
-          open && "[transform:translate(3px,3px)] shadow-[1px_1px_0_var(--ink)]",
-        )}
-      >
-        <Zap className="h-5 w-5 shrink-0 fill-yellow" aria-hidden="true" />
-        <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
-          <span className="text-base">Marcação express</span>
-          <span className="truncate text-sm font-bold normal-case">
-            {express.serviceName} · {formatPriceShort(express.priceEur)} · {express.city}
+    <div data-express className="mt-4 w-full [contain:inline-size]">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls="express-slots"
+          className={cn(
+            // Same shape as "Marcar corte", in the box's earlier colours (cream, yellow bolt)
+            "btn h-14 min-w-0 flex-1 gap-2.5 bg-paper px-3 py-0",
+            // Stays pressed in while the times are open
+            open && "[transform:translate(3px,3px)] shadow-[1px_1px_0_var(--ink)]",
+          )}
+        >
+          <Zap className="h-5 w-5 shrink-0 fill-yellow" aria-hidden="true" />
+          <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
+            <span className="truncate text-base">Marcação express</span>
+            <span className="truncate text-sm font-bold normal-case">
+              {express.serviceName} · {formatPriceShort(express.priceEur)} · {express.city}
+            </span>
           </span>
-        </span>
-        {/* Ticket stub: the next usual time (all of them slide open below) */}
-        <span className="flex h-full shrink-0 flex-col items-end justify-center border-l-2 border-dashed border-ink/40 pl-3 leading-none">
-          <span className="caps text-[0.65rem] text-muted">{shortWhen(express.slots[0].startIso)}</span>
-          <span className="font-display text-xl tabular-nums">{express.slots[0].time}</span>
-        </span>
-      </button>
+        </button>
+        <SlotStub
+          slot={{ services: express.services, location: express.location, startIso: first.startIso, time: first.time }}
+          label="A tua"
+        />
+      </div>
       {/* grid-rows 0fr → 1fr animates the height to fit the content */}
       <div
         id="express-slots"
