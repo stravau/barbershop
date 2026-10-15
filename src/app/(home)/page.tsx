@@ -47,7 +47,7 @@ export default async function HomePage() {
           <Hero nextSlot={nextSlot} />
         </div>
         <HeroIntro />
-        <StickyCta />
+        <StickyCta nextSlot={nextSlot} />
         <InstagramReels />
         <PricesAndHowItWorks />
         <Timetable />

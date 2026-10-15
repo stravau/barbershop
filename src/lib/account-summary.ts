@@ -25,6 +25,9 @@ export type AccountSummary =
       } | null
       /** The usual booking and the next free times that fit it (null: no history yet) */
       express: {
+        /** Usual services (item ids) and city — the next time opens as a booking link */
+        services: string[]
+        location: string
         serviceName: string
         priceEur: number
         city: string
@@ -80,6 +83,8 @@ export async function getAccountSummary(): Promise<AccountSummary> {
       : null,
     express: habit
       ? {
+          services: habit.services,
+          location: habit.location,
           serviceName: habit.serviceName,
           priceEur: habit.priceEur,
           city: cityName(habit.location),

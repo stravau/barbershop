@@ -9,6 +9,7 @@ import { formatPriceShort } from "@/lib/services"
 import { cn } from "@/lib/utils"
 import type { AccountSummary } from "@/lib/account-summary"
 import type { FreeSlot } from "@/lib/next-slot"
+import { shortWhen, slotBookingHref } from "@/lib/booking-links"
 import { SESSION_ENDED_EVENT } from "@/lib/nav-events"
 
 // A signed-in client's bits are read on the server while the page renders
@@ -35,7 +36,7 @@ export function AccountSummaryProvider({
 }
 
 /** The signed-in client's summary, or null (suspends until it has arrived). */
-const useSignedIn = () => {
+export const useSignedIn = () => {
   const ctx = useContext(Ctx)
   const s = ctx ? use(ctx.summary) : null
   return s?.signedIn && !ctx?.ended ? s : null
@@ -107,30 +108,30 @@ export function HeroCta({ nextSlot }: { nextSlot: FreeSlot | null }) {
   )
 }
 
-/** Under the button: the express booking for clients with a history, else the next free slot. */
+/**
+ * Under the button: for clients with express times, the express button (its
+ * stub shows the next one); for everyone else the "Próxima vaga" ticket.
+ */
 function HeroExtras({ nextSlot }: { nextSlot: FreeSlot | null }) {
   const s = useSignedIn()
   const express = s?.express
+  if (express && express.slots.length > 0) return <ExpressBox express={express} />
+  if (nextSlot) return <NextFreeSlot slot={nextSlot} />
+  // Signed in, no ticket to show (no free time soon): what express will do
+  if (!s) return null
   return (
-    <>
-      {/* Once we know who's here: everyone without express times gets the next free slot */}
-      {nextSlot && !express?.slots.length && <NextFreeSlot slot={nextSlot} />}
-      {/* contain:inline-size — the boxes take the button's width instead of widening the hero column */}
-      {s && !express?.slots.length && (
-        <div data-express className="mt-4 w-full rounded-lg border-2 border-dashed border-ink/40 p-3 text-left [contain:inline-size]">
-          <p className="font-display flex items-center gap-1.5">
-            <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
-            Marcação express
-          </p>
-          <p className="mt-1 text-xs text-ink/70">
-            {express
-              ? "Não há horas livres para o teu serviço habitual nas próximas 3 semanas."
-              : "Depois da tua primeira marcação, aparecem aqui as tuas horas habituais para marcares com um toque."}
-          </p>
-        </div>
-      )}
-      {express && express.slots.length > 0 && <ExpressBox express={express} />}
-    </>
+    // contain:inline-size — takes the button's width instead of widening the hero column
+    <div data-express className="mt-4 w-full rounded-lg border-2 border-dashed border-ink/40 p-3 text-left [contain:inline-size]">
+      <p className="font-display flex items-center gap-1.5">
+        <Zap className="h-4 w-4 fill-yellow" aria-hidden="true" />
+        Marcação express
+      </p>
+      <p className="mt-1 text-xs text-ink/70">
+        {express
+          ? "Não há horas livres para o teu serviço habitual nas próximas 3 semanas."
+          : "Depois da tua primeira marcação, aparecem aqui as tuas horas habituais para marcares com um toque."}
+      </p>
+    </div>
   )
 }
 
@@ -142,7 +143,7 @@ function NextFreeSlot({ slot }: { slot: FreeSlot }) {
     // right, a dashed tear line with notches between. contain:inline-size:
     // takes the button's width instead of widening the column.
     <Link
-      href="/marcar?servicos=corte"
+      href={slotBookingHref({ services: ["corte"], location: slot.location, startIso: slot.startIso })}
       aria-label={`Próxima vaga: ${slot.label}. Marcar`}
       className="relative mt-3 flex w-full items-stretch rounded-md border-2 border-ink bg-jungle text-left text-paper shadow-[3px_3px_0_var(--ink)] transition [contain:inline-size] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_var(--ink)] md:hidden"
     >
@@ -192,13 +193,17 @@ function ExpressBox({ express }: { express: Express }) {
         )}
       >
         <Zap className="h-5 w-5 shrink-0 fill-yellow" aria-hidden="true" />
-        <span className="flex min-w-0 flex-col text-left leading-tight">
+        <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
           <span className="text-base">Marcação express</span>
           <span className="truncate text-sm font-bold normal-case">
             {express.serviceName} · {formatPriceShort(express.priceEur)} · {express.city}
           </span>
         </span>
-        <ArrowRight className="h-5 w-5 shrink-0" aria-hidden="true" />
+        {/* Ticket stub: the next usual time (all of them slide open below) */}
+        <span className="flex h-full shrink-0 flex-col items-end justify-center border-l-2 border-dashed border-ink/40 pl-3 leading-none">
+          <span className="caps text-[0.65rem] text-muted">{shortWhen(express.slots[0].startIso)}</span>
+          <span className="font-display text-xl tabular-nums">{express.slots[0].time}</span>
+        </span>
       </button>
       {/* grid-rows 0fr → 1fr animates the height to fit the content */}
       <div
