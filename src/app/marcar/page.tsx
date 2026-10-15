@@ -26,6 +26,7 @@ import {
 import { formatLisbon } from "@/lib/tz"
 import { whatsappUrl } from "@/lib/site"
 import { BackLink } from "@/components/BackLink"
+import { hasNavigatedInApp, previousInAppPath } from "@/components/TopLoader"
 import { cn } from "@/lib/utils"
 
 // The flow lives in the URL (?services=…&cidade=…&dia=…&hora=…&passo=…):
@@ -83,6 +84,20 @@ function writeNotes(notes: string): void {
     else sessionStorage.removeItem(NOTES_KEY)
   } catch {}
 }
+
+/** Sign-in pages: going back there from the booking makes no sense. */
+const isSignIn = (path: string | null) => !!path && (path.startsWith("/conta/entrar") || path.startsWith("/conta/registo"))
+
+/** The query string of a step's URL, normalised for comparing. */
+const searchKey = (urlOrSearch: string) => new URLSearchParams(urlOrSearch.split("?")[1] ?? "").toString()
+
+/**
+ * Steps this page opened by moving forward (their query strings). "Voltar"
+ * on one of them can just go back in the history — the entry before it is
+ * the previous step. In memory only: after a reload, or when arriving from
+ * another page (e.g. the price table straight to step 2), it's empty.
+ */
+const pushedSteps = new Set<string>()
 
 function choiceUrl(choice: Choice, step: Step): string {
   const q = new URLSearchParams()
@@ -144,17 +159,40 @@ function MarcarFlow() {
     document.getElementById("marcar-passo")?.focus({ preventScroll: true })
   }, [step, success])
 
-  /** A new step = a new history entry, so "back" returns to the previous one. */
-  const goTo = (next: Choice, nextStep: Step) => router.push(choiceUrl(next, nextStep))
+  const current = () => searchKey(window.location.search)
+  /** Forward to a new step = a new history entry, so the phone's back button returns. */
+  const goTo = (next: Choice, nextStep: Step) => {
+    const url = choiceUrl(next, nextStep)
+    pushedSteps.add(searchKey(url))
+    router.push(url)
+  }
   /** Choices inside a step (city, day) only update the URL. */
-  const update = (next: Choice) => router.replace(choiceUrl(next, step), { scroll: false })
+  const update = (next: Choice) => {
+    const url = choiceUrl(next, step)
+    if (pushedSteps.has(current())) pushedSteps.add(searchKey(url))
+    router.replace(url, { scroll: false })
+  }
+  /**
+   * "Voltar" goes back to where the visitor was: the previous step when this
+   * one was opened from it, else the page they came from (e.g. the price
+   * table on the home page). Only when that's a sign-in page, or there's no
+   * page before (opened from a link, a reload), does the previous step
+   * replace this one. Never a new history entry — that made "Voltar" and the
+   * back button send each other round in circles between two steps.
+   */
+  const cameFromSignIn = isSignIn(previousInAppPath())
+  const back = (prev: Choice, prevStep: Step) => {
+    if (pushedSteps.has(current()) || (hasNavigatedInApp() && !isSignIn(previousInAppPath()))) router.back()
+    else router.replace(choiceUrl(prev, prevStep))
+  }
 
   return (
     <main>
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="mb-8">
           {/* Later steps have their own "Voltar" (to the previous step) */}
-          {step === "servico" && !success && <BackLink href="/" />}
+          {/* (After signing in, "back" would land on the sign-in page: go home instead) */}
+          {step === "servico" && !success && <BackLink href="/" fixed={cameFromSignIn} />}
           <h1 className="print-shadow text-5xl sm:text-6xl">Marcar</h1>
           {!success && <StepProgress step={step} />}
         </div>
@@ -178,7 +216,7 @@ function MarcarFlow() {
               services={choice.services}
               location={location}
               date={date}
-              onBack={() => goTo(choice, "servico")}
+              onBack={() => back(choice, "servico")}
               onLocation={(id) => update({ ...choice, location: id, date: undefined, slotIso: undefined })}
               onDate={(d) => update({ ...choice, date: d, slotIso: undefined })}
               onPick={(picked) => goTo({ ...choice, slotIso: picked }, "confirmar")}
@@ -186,8 +224,8 @@ function MarcarFlow() {
           ) : (
             <ConfirmStep
               choice={choice as Required<Choice>}
-              onBack={() => goTo({ ...choice, slotIso: undefined }, "quando")}
-              onPickAnother={() => goTo({ ...choice, slotIso: undefined }, "quando")}
+              onBack={() => back({ ...choice, slotIso: undefined }, "quando")}
+              onPickAnother={() => back({ ...choice, slotIso: undefined }, "quando")}
               onSuccess={(payload) => {
                 writeNotes("")
                 setSuccess(payload)

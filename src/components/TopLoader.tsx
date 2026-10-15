@@ -6,9 +6,13 @@ import { NAV_DONE_EVENT, NAV_START_EVENT } from "@/lib/nav-events"
 
 
 // Whether this tab has moved between pages of the site (BackLink uses it to
-// choose between history.back() and its fallback link)
+// choose between history.back() and its fallback link), and the page it was
+// on before the current one (path only; null after a reload)
 let navigatedInApp = false
+let previousPath: string | null = null
+let currentPath: string | null = null
 export const hasNavigatedInApp = () => navigatedInApp
+export const previousInAppPath = () => previousPath
 
 /** A request with no new page after this long just ends the bar. */
 const GIVE_UP_MS = 10_000
@@ -52,7 +56,9 @@ export function TopLoader() {
   const firstUrl = useRef(url)
   useEffect(() => {
     if (url !== firstUrl.current) navigatedInApp = true
-  }, [url])
+    if (currentPath !== null && pathname !== currentPath) previousPath = currentPath
+    currentPath = pathname
+  }, [url, pathname])
 
   // "done" fades out; a request that never lands a new page gives up
   useEffect(() => {
