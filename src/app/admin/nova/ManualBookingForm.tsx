@@ -1,11 +1,18 @@
 "use client"
 
-import { startTransition, useActionState, useEffect, useRef, useState } from "react"
+import { startTransition, useActionState, useEffect, useId, useRef, useState } from "react"
+import { Check } from "lucide-react"
 import { SERVICES, buildCombo, formatPrice, validateSelection, type ServiceId } from "@/lib/services"
 import { LOCATIONS } from "@/lib/schedule"
+import { formatLisbon } from "@/lib/tz"
+import type { ClientHint } from "@/lib/client-directory"
+import { matchClients } from "@/lib/client-match"
 import { createManualBooking, type ManualBookingState } from "./actions"
 
-export function ManualBookingForm({ today }: { today: string }) {
+/** "351912345678" -> "912345678" (how it's typed here) */
+const localPhone = (phone: string) => (phone.startsWith("351") ? phone.slice(3) : phone)
+
+export function ManualBookingForm({ today, clients }: { today: string; clients: ClientHint[] }) {
   const [state, formAction, pending] = useActionState<ManualBookingState, FormData>(
     createManualBooking,
     {},
@@ -27,6 +34,58 @@ export function ManualBookingForm({ today }: { today: string }) {
   const valid = validateSelection(services)
   const combo = valid.ok ? buildCombo(services) : null
 
+  // The client: typed, or picked from the suggestions (fills everything they usually book)
+  const [name, setName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [email, setEmail] = useState("")
+  const [picked, setPicked] = useState<ClientHint | null>(null)
+  const [typingIn, setTypingIn] = useState<"name" | "phone" | null>(null)
+  const [highlight, setHighlight] = useState(0)
+  const listId = useId()
+  const query = typingIn === "name" ? name : typingIn === "phone" ? phone : ""
+  const suggestions = picked ? [] : matchClients(clients, query)
+
+  function pick(c: ClientHint) {
+    setName(c.name)
+    setPhone(localPhone(c.phone))
+    setEmail(c.email ?? "")
+    setPicked(c)
+    setTypingIn(null)
+    const form = formRef.current
+    if (!form) return
+    // Their usual services and city (a starting point — change freely)
+    if (c.services.length > 0) {
+      form.querySelectorAll<HTMLInputElement>('input[name="services"]').forEach((box) => {
+        box.checked = c.services.includes(box.value)
+      })
+      syncServices()
+    }
+    if (c.location) {
+      const radio = form.querySelector<HTMLInputElement>(`input[name="location"][value="${c.location}"]`)
+      if (radio) radio.checked = true
+    }
+  }
+  function forget() {
+    setPicked(null)
+    setName("")
+    setPhone("")
+    setEmail("")
+  }
+  /** Arrow keys / Enter / Esc in the name and phone fields */
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (suggestions.length === 0) return
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault()
+      const step = e.key === "ArrowDown" ? 1 : -1
+      setHighlight((h) => (h + step + suggestions.length) % suggestions.length)
+    } else if (e.key === "Enter") {
+      e.preventDefault()
+      pick(suggestions[Math.min(highlight, suggestions.length - 1)])
+    } else if (e.key === "Escape") {
+      setTypingIn(null)
+    }
+  }
+
   return (
     <form
       ref={formRef}
@@ -44,18 +103,106 @@ export function ManualBookingForm({ today }: { today: string }) {
         <Legend>Cliente</Legend>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Nome *">
-            <input name="name" required autoComplete="off" className="input" placeholder="Zeca" />
+            <input
+              name="name"
+              required
+              autoComplete="off"
+              className="input"
+              placeholder="Zeca"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                setHighlight(0)
+                if (picked && e.target.value !== picked.name) setPicked(null)
+              }}
+              role="combobox"
+              aria-expanded={typingIn === "name" && suggestions.length > 0}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              onFocus={() => setTypingIn("name")}
+              // (a click on a suggestion lands first: the options cancel mousedown)
+              onBlur={() => setTypingIn(null)}
+              onKeyDown={onKeyDown}
+            />
           </Field>
           <Field label="Telemóvel (opcional)">
-            <input name="phone" inputMode="tel" autoComplete="off" className="input" placeholder="912345678" />
+            <input
+              name="phone"
+              inputMode="tel"
+              autoComplete="off"
+              className="input"
+              placeholder="912345678"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value)
+                setHighlight(0)
+                if (picked && e.target.value !== localPhone(picked.phone)) setPicked(null)
+              }}
+              role="combobox"
+              aria-expanded={typingIn === "phone" && suggestions.length > 0}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              onFocus={() => setTypingIn("phone")}
+              // (a click on a suggestion lands first: the options cancel mousedown)
+              onBlur={() => setTypingIn(null)}
+              onKeyDown={onKeyDown}
+            />
           </Field>
           <Field label="Email (opcional)">
-            <input name="email" type="email" autoComplete="off" className="input" />
+            <input name="email" type="email" autoComplete="off" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
         </div>
-        <p className="mt-1.5 text-xs text-muted">
-          Com o mesmo telemóvel, junta-se ao cliente que já existe.
-        </p>
+
+        {/* Clients that match what's being typed */}
+        {typingIn && suggestions.length > 0 && (
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label="Clientes parecidos"
+            className="mt-2 divide-y divide-ink/10 overflow-hidden rounded-md border-2 border-ink bg-paper shadow-[3px_3px_0_var(--ink)]"
+          >
+            {suggestions.map((c, i) => (
+              <li
+                key={c.id}
+                role="option"
+                aria-selected={i === highlight}
+                // mousedown would blur the field and close the list before the click
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(c)}
+                onMouseEnter={() => setHighlight(i)}
+                className={`cursor-pointer px-3 py-2 ${i === highlight ? "bg-yellow/40" : ""}`}
+              >
+                <span className="font-semibold">{c.name}</span>
+                <span className="text-sm text-muted">
+                  {c.phone && <> · {localPhone(c.phone)}</>}
+                  {c.serviceName && <> · {c.serviceName}</>}
+                  {c.location && <> · {c.location === "lisboa" ? "Lisboa" : "Setúbal"}</>}
+                  {" · "}
+                  {c.visits === 1 ? "1 visita" : `${c.visits} visitas`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {picked ? (
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-success/10 px-3 py-2 text-sm">
+            <Check className="h-4 w-4 text-success" aria-hidden="true" />
+            <span>
+              <strong>{picked.name}</strong>, cliente já registado
+              {picked.visits > 0 && <> · {picked.visits === 1 ? "1 visita" : `${picked.visits} visitas`}</>}
+              {picked.lastVisit && <>, a última a {formatLisbon(new Date(picked.lastVisit), "dd/MM")}</>}
+              {picked.serviceName && <> · costuma: {picked.serviceName}</>}
+            </span>
+            <button type="button" onClick={forget} className="ml-auto text-sm font-semibold underline-offset-4 hover:underline">
+              Não é este
+            </button>
+          </p>
+        ) : (
+          <p className="mt-1.5 text-xs text-muted">
+            Escreve o nome ou o número: aparecem os clientes parecidos. Com o mesmo telemóvel, junta-se ao cliente que já existe.
+          </p>
+        )}
       </fieldset>
 
       <fieldset>

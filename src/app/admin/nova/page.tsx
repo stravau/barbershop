@@ -2,12 +2,16 @@ import { BackLink } from "@/components/BackLink"
 import { lisbonPeriods } from "@/lib/tz"
 import { ManualBookingForm } from "./ManualBookingForm"
 import { requireAdmin } from "@/lib/admin-auth"
+import { prisma } from "@/lib/prisma"
+import { loadClientDirectory } from "@/lib/client-directory"
 
 export const dynamic = "force-dynamic"
 
 /** Register a booking arranged outside the site (WhatsApp, phone, walk-in). */
 export default async function NovaMarcacaoPage() {
   await requireAdmin("/admin/nova")
+  // For suggestions while typing a name or number
+  const clients = await loadClientDirectory(prisma)
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-3xl">
@@ -18,7 +22,7 @@ export default async function NovaMarcacaoPage() {
           balcão. Ficam logo confirmadas e o cliente não recebe email.
         </p>
         <div className="rounded-lg border-2 border-ink bg-card p-5 shadow-[6px_6px_0_var(--ink)] sm:p-7">
-          <ManualBookingForm today={lisbonPeriods().today} />
+          <ManualBookingForm today={lisbonPeriods().today} clients={clients} />
         </div>
       </div>
     </main>
