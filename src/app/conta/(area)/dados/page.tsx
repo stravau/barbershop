@@ -3,6 +3,7 @@ import { requireClient } from "@/lib/client-auth"
 import { Card, Notice } from "@/app/conta/_components/ContaShell"
 import { ConfirmForm } from "@/app/conta/_components/ConfirmSubmit"
 import { LogoutButton } from "@/components/LogoutButton"
+import { SubmitButton } from "@/components/SubmitButton"
 import { deleteAccount, updateDetails } from "@/app/conta/actions"
 
 export const metadata: Metadata = { title: "Os meus dados", robots: "noindex" }
@@ -72,9 +73,9 @@ export default async function DadosPage({ searchParams }: PageProps) {
               className="input"
             />
           </label>
-          <button type="submit" className="btn">
+          <SubmitButton pendingText="A guardar…" className="btn">
             Guardar
-          </button>
+          </SubmitButton>
         </form>
       </Card>
 

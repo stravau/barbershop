@@ -1,5 +1,6 @@
 import { MailCheck } from "lucide-react"
 import { BackLink } from "@/components/BackLink"
+import { SubmitButton } from "@/components/SubmitButton"
 
 interface PageProps {
   searchParams: Promise<{ error?: string; next?: string }>
@@ -48,9 +49,9 @@ export default async function AdminCodePage({ searchParams }: PageProps) {
         {sp.error === "wrong" && (
           <p className="text-sm font-semibold text-danger">Código incorreto. Tenta outra vez.</p>
         )}
-        <button type="submit" className="btn w-full">
+        <SubmitButton native pendingText="A confirmar…" className="btn w-full">
           Confirmar
-        </button>
+        </SubmitButton>
       </form>
     </main>
   )

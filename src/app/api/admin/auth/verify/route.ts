@@ -14,6 +14,7 @@ import {
   recordAttempt,
   rememberDevice,
   requestInfo,
+  sessionFromCookie,
   startSession,
 } from "@/lib/admin-auth"
 
@@ -43,6 +44,11 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.redirect(url, 303)
     res.cookies.delete(PENDING_2FA_COOKIE_NAME)
     return res
+  }
+
+  // Already signed in (a second tap after the first one went through): carry on
+  if (await sessionFromCookie(req.cookies.get(SESSION_COOKIE_NAME)?.value)) {
+    return NextResponse.redirect(new URL(next, req.url), 303)
   }
 
   const { ip, userAgent } = await requestInfo()

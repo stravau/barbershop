@@ -1,6 +1,9 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { redirect } from "next/navigation"
+import { currentClientSession } from "@/lib/client-auth"
 import { safeNext } from "@/lib/safe-next"
+import { SubmitButton } from "@/components/SubmitButton"
 import { AuthCard, FormError } from "../../_components/AuthCard"
 import { confirmLoginCode } from "../actions"
 
@@ -23,6 +26,10 @@ export default async function CodigoPage({ searchParams }: PageProps) {
   const email = sp.email ?? ""
   const next = safeNext(sp.next)
   const nextQuery = next === "/conta" ? "" : `&next=${encodeURIComponent(next)}`
+  // Already in (a second tap after the first one signed in, or back here
+  // afterwards): carry on rather than ask for a code again
+  const current = await currentClientSession()
+  if (current) redirect(current.client ? next : `/conta/registo${nextQuery.replace("&", "?")}`)
 
   return (
     <AuthCard
@@ -50,9 +57,9 @@ export default async function CodigoPage({ searchParams }: PageProps) {
           className="input text-center text-2xl tracking-[0.4em] tabular-nums"
         />
         {sp.erro && ERRORS[sp.erro] && <FormError>{ERRORS[sp.erro]}</FormError>}
-        <button type="submit" className="btn w-full">
+        <SubmitButton pendingText="A entrar…" className="btn w-full">
           Entrar
-        </button>
+        </SubmitButton>
       </form>
       <Link href={`/conta/entrar?email=${encodeURIComponent(email)}${nextQuery}`} className="link mt-4 inline-block text-sm">
         Pedir outro código

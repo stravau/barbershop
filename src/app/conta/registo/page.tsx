@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { currentClientSession } from "@/lib/client-auth"
 import { safeNext } from "@/lib/safe-next"
+import { SubmitButton } from "@/components/SubmitButton"
 import { AuthCard, FormError } from "../_components/AuthCard"
 import { completeRegistration } from "../entrar/actions"
 
@@ -56,9 +57,9 @@ export default async function RegistoPage({ searchParams }: PageProps) {
           />
         </label>
         {sp.erro && ERRORS[sp.erro] && <FormError>{ERRORS[sp.erro]}</FormError>}
-        <button type="submit" className="btn w-full">
+        <SubmitButton pendingText="A criar conta…" className="btn w-full">
           Criar conta
-        </button>
+        </SubmitButton>
       </form>
     </AuthCard>
   )

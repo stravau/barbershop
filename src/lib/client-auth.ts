@@ -63,7 +63,8 @@ export async function sendClientCode(rawEmail: string): Promise<"invalid" | "blo
 }
 
 /**
- * Checks the latest code sent to `email`; on success starts a session
+ * Checks the codes sent to `email` that are still valid — any of them, as a
+ * double tap on "Enviar código" sends two emails; on success starts a session
  * (cookie set) linked to the client with that email, if there is one.
  * Returns "ok" | "wrong" | "expired" | "blocked".
  */
@@ -75,17 +76,24 @@ export async function verifyClientCode(
   const { ip, userAgent } = await requestInfo()
   if ((await failedAttemptsLeft(ip, "client")) === 0) return "blocked"
 
-  const row = await prisma.clientLoginCode.findFirst({
-    where: { email, usedAt: null },
+  const valid = await prisma.clientLoginCode.findMany({
+    where: { email, usedAt: null, expiresAt: { gt: new Date() }, attempts: { lt: CODE_MAX_TRIES } },
     orderBy: { createdAt: "desc" },
+    take: CODES_PER_EMAIL,
   })
-  if (!row || row.expiresAt < new Date() || row.attempts >= CODE_MAX_TRIES) return "expired"
-  if (!secretsMatch(sha256(given.replace(/\D/g, "")), row.codeHash)) {
-    await prisma.clientLoginCode.update({ where: { id: row.id }, data: { attempts: { increment: 1 } } })
+  if (valid.length === 0) return "expired"
+  const hash = sha256(given.replace(/\D/g, ""))
+  if (!valid.some((row) => secretsMatch(hash, row.codeHash))) {
+    // A wrong guess counts against all of them (still 5 tries in total)
+    await prisma.clientLoginCode.updateMany({
+      where: { id: { in: valid.map((row) => row.id) } },
+      data: { attempts: { increment: 1 } },
+    })
     await recordAttempt(ip, "client-code", false, userAgent)
     return "wrong"
   }
-  await prisma.clientLoginCode.update({ where: { id: row.id }, data: { usedAt: new Date() } })
+  // Signed in: none of this email's codes can be used again
+  await prisma.clientLoginCode.updateMany({ where: { email, usedAt: null }, data: { usedAt: new Date() } })
   await recordAttempt(ip, "client-code", true, userAgent)
 
   const client = await findClientByEmail(email)

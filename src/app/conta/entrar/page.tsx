@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { currentClientSession } from "@/lib/client-auth"
 import { safeNext } from "@/lib/safe-next"
+import { SubmitButton } from "@/components/SubmitButton"
 import { AuthCard, FormError } from "../_components/AuthCard"
 import { requestLoginCode } from "./actions"
 
@@ -52,9 +53,9 @@ export default async function EntrarPage({ searchParams }: PageProps) {
           />
         </label>
         {sp.erro && ERRORS[sp.erro] && <FormError>{ERRORS[sp.erro]}</FormError>}
-        <button type="submit" className="btn w-full">
+        <SubmitButton pendingText="A enviar…" className="btn w-full">
           Enviar código
-        </button>
+        </SubmitButton>
       </form>
       <p className="mt-4 text-xs text-muted">
         Usa o mesmo email das tuas marcações para veres o teu histórico.

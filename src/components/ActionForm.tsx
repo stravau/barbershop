@@ -1,8 +1,8 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { useFormStatus } from "react-dom"
 import { ConfirmDialog } from "./ConfirmDialog"
+import { SubmitButton } from "./SubmitButton"
 
 export interface ActionConfirm {
   title: string
@@ -64,31 +64,5 @@ export function ActionForm({
         </ConfirmDialog>
       )}
     </form>
-  )
-}
-
-/** Disabled while the action runs, so a double tap sends it once. */
-function SubmitButton({
-  type,
-  onClick,
-  className,
-  children,
-}: {
-  type: "button" | "submit"
-  onClick?: () => void
-  className?: string
-  children: React.ReactNode
-}) {
-  const { pending } = useFormStatus()
-  return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={pending}
-      aria-busy={pending}
-      className={`${className ?? ""} ${pending ? "cursor-wait opacity-70" : ""}`}
-    >
-      {children}
-    </button>
   )
 }

@@ -1,4 +1,5 @@
 import { Lock } from "lucide-react"
+import { SubmitButton } from "@/components/SubmitButton"
 
 interface PageProps {
   searchParams: Promise<{ error?: string; next?: string; left?: string }>
@@ -48,9 +49,9 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
           />
         </label>
         {error && <p className="text-sm font-semibold text-danger">{error}</p>}
-        <button type="submit" className="btn w-full">
+        <SubmitButton native pendingText="A entrar…" className="btn w-full">
           Entrar
-        </button>
+        </SubmitButton>
       </form>
     </main>
   )

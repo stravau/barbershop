@@ -32,10 +32,12 @@ export async function requestLoginCode(form: FormData): Promise<void> {
 export async function confirmLoginCode(form: FormData): Promise<void> {
   const email = String(form.get("email") ?? "")
   const result = await verifyClientCode(email, String(form.get("code") ?? ""))
-  if (result !== "ok") {
+  const current = await currentClientSession()
+  // Refused, but already signed in with this email: a second tap on "Entrar"
+  // after the first one used the code — carry on rather than say "expired"
+  if (result !== "ok" && current?.session.email !== normalizeEmail(email)) {
     redirect(`/conta/entrar/codigo?email=${encodeURIComponent(email)}&erro=${result}${nextParam(form)}`)
   }
-  const current = await currentClientSession()
   redirect(current?.client ? safeNext(String(form.get("next") ?? "")) : `/conta/registo?${nextParam(form).slice(1)}`)
 }
 
